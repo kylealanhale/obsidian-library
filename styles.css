@@ -7,14 +7,34 @@ If your plugin does not need CSS, delete this file.
 
 */
 
+.three-pane {
+    height: 100%;
+    overflow: hidden !important;
+}
 .three-pane .nav-folder.mod-root {
     width: 50%;
-    /* height: 100%; */
-    /* position: absolute; */
-    /* top: 0; */
-    /* left: 0; */
-    border-right: 1px solid #333;
 }
-.notes {
+.library-folders {
+    border-right: 1px solid #333;
+    overflow: scroll;
+}
+.library-notes {
     left: 50%;
+    font-size: small;
+    overflow: scroll;
+}
+.library-summary-container {
+    --line-height: 1.5em;
+    border-bottom: 1px solid #333;
+}
+.library-summary {
+    line-height: var(--line-height);
+    height: calc(var(--line-height) * 3);
+    margin: calc(var(--line-height) / 2);
+    overflow: hidden;
+    /* white-space: break-spaces;
+    text-overflow: ellipsis; */
+}
+.library-summary .content {
+    color: #999;
 }

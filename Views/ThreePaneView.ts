@@ -23,20 +23,42 @@ export class ThreePaneParentView extends ItemView {
         container.empty();
         container.addClasses(['workspace-split', 'mod-left-split', 'three-pane'])
 
-        const folders = container.createDiv({cls: 'nav-folder mod-root'})
+        const folders = container.createDiv({cls: 'nav-folder mod-root library-folders'})
         const title = folders.createDiv({cls: 'nav-folder-title'})
         title.createDiv({text: vaultName, cls: 'nav-folder-title-content'})
 
+        const notes = container.createDiv({cls: 'nav-folder mod-root library-notes'})
+
         const children = folders.createDiv({cls: 'nav-folder-children'})
+        let currentActiveElement: HTMLElement
+
         this.app.vault.getRoot().children.forEach(child => {
             if (child instanceof TFile) return;
-            const folder = children.createDiv({cls: 'nav-folder'})
-            const title = folder.createDiv({cls: 'nav-folder-title'})
+            const folder = child as TFolder;
+            const title = children
+                .createDiv('nav-folder')
+                .createDiv('nav-folder-title')
             title.createDiv({text: child.name, cls: 'nav-folder-title-content'})
 
             title.onClickEvent((event: MouseEvent) => {
                 console.log('hey');
-                title.addClass('is-active')
+                if (currentActiveElement) currentActiveElement.removeClass('is-active')
+                currentActiveElement = title
+                currentActiveElement.addClass('is-active')
+
+                notes.empty()
+                folder.children.forEach(async child => {
+                    if (!(child instanceof TFile)) return;
+                    const file = child as TFile;
+                    if (file.extension != 'md') return;
+
+                    let content = await this.app.vault.cachedRead(file)
+                    const noteSummary = notes
+                        .createDiv('library-summary-container')
+                        .createDiv('library-summary')
+                    noteSummary.createDiv({text: file.basename, cls: 'title'})
+                    noteSummary.createDiv({text: content.slice(0, 300), cls: 'content'})
+                })
             })
         });
         // const divider = container.createEl('hr', {cls: "workspace-leaf-resize-handle"})
