@@ -6,3 +6,15 @@ available in the app when your plugin is enabled.
 If your plugin does not need CSS, delete this file.
 
 */
+
+.three-pane .nav-folder.mod-root {
+    width: 50%;
+    /* height: 100%; */
+    /* position: absolute; */
+    /* top: 0; */
+    /* left: 0; */
+    border-right: 1px solid #333;
+}
+.notes {
+    left: 50%;
+}
