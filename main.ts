@@ -1,5 +1,5 @@
 import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, setIcon, Setting } from 'obsidian';
-import { ThreePaneChildView, ThreePaneParentView, VIEW_TYPE_THREE_PANE_CHILD, VIEW_TYPE_THREE_PANE_PARENT } from 'Views/ThreePaneView';
+import { ThreePaneParentView, VIEW_TYPE_THREE_PANE_PARENT } from 'Views/ThreePaneView';
 
 interface ThreePaneSettings {
     mySetting: string;
@@ -30,12 +30,12 @@ export default class ThreePanePlugin extends Plugin {
 
         const leaf = this.app.workspace.getLeftLeaf(false)
         await leaf.setViewState({
-          type: VIEW_TYPE_THREE_PANE_PARENT,
-          active: true,
+            type: VIEW_TYPE_THREE_PANE_PARENT,
+            active: true,
         });
 
         this.app.workspace.revealLeaf(leaf);
-    }
+      }
 
     onunload() {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_THREE_PANE_PARENT);

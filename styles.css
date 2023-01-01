@@ -17,24 +17,30 @@ If your plugin does not need CSS, delete this file.
 .library-folders {
     border-right: 1px solid #333;
     overflow: scroll;
+    padding-right: 1em;
 }
 .library-notes {
     left: 50%;
     font-size: small;
     overflow: scroll;
+    padding-left: 1em;
 }
 .library-summary-container {
     --line-height: 1.5em;
-    border-bottom: 1px solid #333;
+    padding: calc(var(--line-height) / 2);
+    border-bottom: 1px solid #4444;
 }
 .library-summary {
     line-height: var(--line-height);
-    height: calc(var(--line-height) * 3);
-    margin: calc(var(--line-height) / 2);
+    height: calc(var(--line-height) * 5);
+    margin: 0;
     overflow: hidden;
-    /* white-space: break-spaces;
-    text-overflow: ellipsis; */
 }
 .library-summary .content {
-    color: #999;
+    color: #666;
+}
+
+.three-pane .nav-file-title {
+    flex-direction: column;
+    align-items: initial;
 }

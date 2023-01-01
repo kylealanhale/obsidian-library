@@ -1,7 +1,6 @@
-import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, WorkspaceSplit, Vault, TFolder, TFile } from "obsidian";
+import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, MarkdownView, WorkspaceSplit, Vault, TFolder, TFile } from "obsidian";
 
 export const VIEW_TYPE_THREE_PANE_PARENT = "three-pane-parent-view";
-export const VIEW_TYPE_THREE_PANE_CHILD = "three-pane-child-view";
 
 export class ThreePaneParentView extends ItemView {
     constructor(leaf: WorkspaceLeaf) {
@@ -30,7 +29,7 @@ export class ThreePaneParentView extends ItemView {
         const notes = container.createDiv({cls: 'nav-folder mod-root library-notes'})
 
         const children = folders.createDiv({cls: 'nav-folder-children'})
-        let currentActiveElement: HTMLElement
+        let activeFolder: HTMLElement
 
         this.app.vault.getRoot().children.forEach(child => {
             if (child instanceof TFile) return;
@@ -40,11 +39,11 @@ export class ThreePaneParentView extends ItemView {
                 .createDiv('nav-folder-title')
             title.createDiv({text: child.name, cls: 'nav-folder-title-content'})
 
-            title.onClickEvent((event: MouseEvent) => {
-                console.log('hey');
-                if (currentActiveElement) currentActiveElement.removeClass('is-active')
-                currentActiveElement = title
-                currentActiveElement.addClass('is-active')
+            title.onClickEvent(event => {
+                if (activeFolder) activeFolder.removeClass('is-active')
+                activeFolder = title
+                activeFolder.addClass('is-active')
+                let activeNote: HTMLElement
 
                 notes.empty()
                 folder.children.forEach(async child => {
@@ -53,58 +52,22 @@ export class ThreePaneParentView extends ItemView {
                     if (file.extension != 'md') return;
 
                     let content = await this.app.vault.cachedRead(file)
-                    const noteSummary = notes
-                        .createDiv('library-summary-container')
+                    const container = notes.createDiv('library-summary-container nav-file-title')
+                    const noteSummary = container
                         .createDiv('library-summary')
                     noteSummary.createDiv({text: file.basename, cls: 'title'})
                     noteSummary.createDiv({text: content.slice(0, 300), cls: 'content'})
+
+                    noteSummary.onClickEvent(async event => {
+                        if (activeNote) activeNote.removeClass('is-active')
+                        activeNote = container
+                        activeNote.addClass('is-active')
+
+                        this.app.workspace.getLeaf().openFile(file);
+                    })
                 })
             })
         });
-        // const divider = container.createEl('hr', {cls: "workspace-leaf-resize-handle"})
-        // const notes = container.createDiv({cls: "notes", text: "Notes"})
-
-
-    }
-
-    async onClose() {
-        // Nothing to clean up.
-    }
-}
-
-export class ThreePaneChildSplit extends WorkspaceSplit {
-    root: WorkspaceLeaf
-    constructor(root: WorkspaceLeaf) {
-        super();
-        this.root = root
-    }
-
-    getContainer(): WorkspaceContainer {
-        return this.root.getContainer()
-    }
-
-    getRoot(): WorkspaceItem {
-        return this.root
-    }
-}
-
-export class ThreePaneChildView extends ItemView {
-    constructor(leaf: WorkspaceLeaf) {
-        super(leaf);
-    }
-
-    getViewType() {
-        return VIEW_TYPE_THREE_PANE_CHILD;
-    }
-
-    getDisplayText() {
-        return "Three Pane child view";
-    }
-
-    async onOpen() {
-        const container = this.containerEl.children[1];
-        container.empty();
-        container.createEl("h4", { text: "Here's a child pane"});
     }
 
     async onClose() {
