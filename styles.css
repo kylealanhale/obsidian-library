@@ -15,20 +15,23 @@ If your plugin does not need CSS, delete this file.
     width: 50%;
 }
 .library-folders {
-    border-right: 1px solid #333;
+    /* border-right: 1px solid #333; */
     overflow: scroll;
-    padding-right: 1em;
+    margin-right: 1em;
 }
 .library-notes {
     left: 50%;
     font-size: small;
     overflow: scroll;
-    padding-left: 1em;
+    background-color: #131313;
+    padding: 1em;
+    margin-top: -1em;
+    margin-bottom: -1em;
 }
 .library-summary-container {
     --line-height: 1.5em;
     padding: calc(var(--line-height) / 2);
-    border-bottom: 1px solid #4444;
+    /* border-bottom: 1px solid #4444; */
 }
 .library-summary {
     line-height: var(--line-height);
