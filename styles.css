@@ -23,7 +23,7 @@ If your plugin does not need CSS, delete this file.
     left: 50%;
     font-size: small;
     overflow: scroll;
-    background-color: #131313;
+    background-color: #111;
     padding: 1em;
     margin-top: -1em;
     margin-bottom: -1em;
