@@ -3,12 +3,14 @@ import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, MarkdownVie
 export const VIEW_TYPE_THREE_PANE_PARENT = "three-pane-parent-view";
 
 export class ThreePaneParentView extends ItemView {
-    constructor(leaf: WorkspaceLeaf) {
-        super(leaf);
-    }
-
     foldersElement: HTMLElement
     notesElement: HTMLElement
+
+    constructor(leaf: WorkspaceLeaf) {
+        super(leaf);
+
+        //  new app.internalPlugins.plugins['file-explorer'].views['file-explorer'](app.workspace.activeLeaf)
+    }
 
     getViewType() {
         return VIEW_TYPE_THREE_PANE_PARENT;
@@ -24,27 +26,29 @@ export class ThreePaneParentView extends ItemView {
 
         const container = this.containerEl.children[1];
         container.empty();
-        container.addClasses(['workspace-split', 'mod-left-split', 'three-pane']) 
+        container.addClasses(['workspace-split', 'mod-left-split', 'three-pane'])
 
         this.foldersElement = container.createDiv({cls: 'nav-folder mod-root library-folders'})
         this.notesElement = container.createDiv({cls: 'nav-folder mod-root library-notes'})
 
         const title = this.foldersElement.createDiv({cls: 'nav-folder-title'})
+        title.createDiv("nav-folder-collapse-indicator collapse-icon")
         title.createDiv({text: vaultName, cls: 'nav-folder-title-content'})
 
-        this.populateFolders(this.app.vault.getRoot())
+        const rootFolder = this.app.vault.getRoot()
+        const rootElement = this.foldersElement.createDiv({cls: 'nav-folder-children'})
+        this.populateFolders(rootFolder, rootElement)
     }
 
-    async populateFolders(rootFolder: TFolder) {
+    async populateFolders(rootFolder: TFolder, rootElement: HTMLElement) {
         let activeFolder: HTMLElement
 
-        const rootElement = this.foldersElement.createDiv({cls: 'nav-folder-children'})
         rootFolder.children.forEach(child => {
             if (child instanceof TFile) return;
             const folder = child as TFolder;
             const title = rootElement
                 .createDiv('nav-folder')
-                .createDiv('nav-folder-title')
+                .createDiv({cls: 'nav-folder-title', attr: {'data-path': folder.path}})
             title.createDiv({text: child.name, cls: 'nav-folder-title-content'})
 
             title.onClickEvent(event => {

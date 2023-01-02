@@ -1,4 +1,5 @@
-import { App, Editor, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, setIcon, Setting } from 'obsidian';
+import { App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
+import { getModifiedFileExplorerView, VIEW_TYPE_MODIFIED_FILE_EXPLORER } from 'Views/ModifiedFileExplorerView';
 import { ThreePaneParentView, VIEW_TYPE_THREE_PANE_PARENT } from 'Views/ThreePaneView';
 
 interface ThreePaneSettings {
@@ -15,9 +16,14 @@ export default class ThreePanePlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
+        // this.registerView(
+        //     VIEW_TYPE_THREE_PANE_PARENT,
+        //     (leaf) => new ThreePaneParentView(leaf)
+        // );
         this.registerView(
-            VIEW_TYPE_THREE_PANE_PARENT,
-            (leaf) => new ThreePaneParentView(leaf)
+            VIEW_TYPE_MODIFIED_FILE_EXPLORER,
+            // @ts-ignore
+            (leaf) => getModifiedFileExplorerView(this.app, leaf)
         );
 
         this.addSettingTab(new ThreePaneSettingsTab(this.app, this));
@@ -26,19 +32,19 @@ export default class ThreePanePlugin extends Plugin {
     }
 
     async activateView() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_THREE_PANE_PARENT);
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
 
         const leaf = this.app.workspace.getLeftLeaf(false)
         await leaf.setViewState({
-            type: VIEW_TYPE_THREE_PANE_PARENT,
+            type: VIEW_TYPE_MODIFIED_FILE_EXPLORER,
             active: true,
         });
 
         this.app.workspace.revealLeaf(leaf);
-      }
+    }
 
     onunload() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_THREE_PANE_PARENT);
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
     }
 
     async loadSettings() {
