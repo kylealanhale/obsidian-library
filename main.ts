@@ -1,17 +1,16 @@
 import { App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
-import { ModifiedFileExplorerView, VIEW_TYPE_MODIFIED_FILE_EXPLORER } from 'Views/ModifiedFileExplorerView';
-import { LibraryView, VIEW_TYPE_LIBRARY } from 'Views/ThreePaneView';
+import { LibraryView, VIEW_TYPE_LIBRARY } from 'Views/LibraryView';
 
-interface ThreePaneSettings {
+interface LibrarySettings {
     mySetting: string;
 }
 
-const DEFAULT_SETTINGS: ThreePaneSettings = {
+const DEFAULT_SETTINGS: LibrarySettings = {
     mySetting: 'default'
 }
 
-export default class ThreePanePlugin extends Plugin {
-    settings: ThreePaneSettings;
+export default class LibraryPlugin extends Plugin {
+    settings: LibrarySettings;
 
     async onload() {
         await this.loadSettings();
@@ -22,13 +21,8 @@ export default class ThreePanePlugin extends Plugin {
             VIEW_TYPE_LIBRARY,
             (leaf) => new LibraryView(leaf)
         );
-        // this.registerView(
-        //     VIEW_TYPE_MODIFIED_FILE_EXPLORER,
-        //     // @ts-ignore
-        //     (leaf) => getModifiedFileExplorerView(this.app, leaf)
-        // );
 
-        this.addSettingTab(new ThreePaneSettingsTab(this.app, this));
+        this.addSettingTab(new LibrarySettingsTab(this.app, this));
 
         this.activateView();
     }
@@ -44,18 +38,6 @@ export default class ThreePanePlugin extends Plugin {
 
         this.app.workspace.revealLeaf(leaf);
     }
-
-    // async activateView() {  // File explorer
-    //     this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
-
-    //     const leaf = this.app.workspace.getLeftLeaf(false)
-    //     await leaf.setViewState({
-    //         type: VIEW_TYPE_MODIFIED_FILE_EXPLORER,
-    //         active: true,
-    //     });
-
-    //     this.app.workspace.revealLeaf(leaf);
-    // }
 
     onunload() {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
@@ -86,10 +68,10 @@ class SampleModal extends Modal {
     }
 }
 
-class ThreePaneSettingsTab extends PluginSettingTab {
-    plugin: ThreePanePlugin;
+class LibrarySettingsTab extends PluginSettingTab {
+    plugin: LibraryPlugin;
 
-    constructor(app: App, plugin: ThreePanePlugin) {
+    constructor(app: App, plugin: LibraryPlugin) {
         super(app, plugin);
         this.plugin = plugin;
     }

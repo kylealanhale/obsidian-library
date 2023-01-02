@@ -1,8 +1,16 @@
 # Obsidian Library View
 
 ## To do
+
+### Bugs
+* sometimes can't click on note preview if preview is short (handler on wrong elem?)
+* selected folder isn't indicated
+* vault folder isn't treated the same
+
 ### General
 * column resizing
+  * handle
+  * commands, with width calculation to match non-doubled leaves
 * √ better native style integration
 * clean up preview copy
   * front matter
