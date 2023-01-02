@@ -1,5 +1,3 @@
-
-import { getEventListeners } from "events";
 import { TFile, TAbstractFile, View, App, WorkspaceLeaf, TFolder, Vault } from "obsidian";
 
 export const VIEW_TYPE_MODIFIED_FILE_EXPLORER = "modified-file-explorer";
@@ -15,35 +13,42 @@ export class ModifiedFileExplorerView extends View {
 
         // @ts-ignore
         const FileExplorerView = app.internalPlugins.plugins['file-explorer'].views['file-explorer']
-        let instance = new FileExplorerView(leaf)
+        let fileExplorer = new FileExplorerView(leaf)
 
-        this.patchOnCreate(instance)
-        this.patchCreateFolderDom(instance, clickHandler)
+        this.patchOnCreate(fileExplorer)
+        this.patchCreateFolderDom(fileExplorer, clickHandler)
 
-        instance.icon = 'library'
-        return instance
+        fileExplorer.icon = 'library'
+        return fileExplorer
     }
 
     getViewType(): string {
         return VIEW_TYPE_MODIFIED_FILE_EXPLORER
     }
 
-    patchOnCreate(instance: any) {
-        const onCreate = instance.onCreate
-        instance.onCreate = function(file: TAbstractFile) {
-            if (file instanceof TFile) return;
-            // @ts-ignore
-            const attachmentsPath = app.vault.config.attachmentFolderPath.slice(2)
-            if (file.name == attachmentsPath) return;
+    patchOnCreate(fileExplorer: any) {
+        const onCreate = fileExplorer.onCreate
+        const instance = this
+        fileExplorer.onCreate = function(file: TAbstractFile) {
+            if (!instance.isNavigable(file)) return;
 
             onCreate.call(this, file)
         }
     }
 
-    patchCreateFolderDom(instance: any, clickHandler: any) {
-        const createFolderDom = instance.createFolderDom
-        instance.createFolderDom = function (folder: TFolder) {
-            let navFolder = createFolderDom.call(instance, folder)
+    isNavigable(file: TAbstractFile) {
+        if (file instanceof TFile) return false;
+        // @ts-ignore
+        const attachmentsPath = app.vault.config.attachmentFolderPath.slice(2)
+        if (file.name == attachmentsPath) return false;
+        return true
+    }
+
+    patchCreateFolderDom(fileExplorer: any, clickHandler: any) {
+        const instance = this
+        const createFolderDom = fileExplorer.createFolderDom
+        fileExplorer.createFolderDom = function (folder: TFolder) {
+            let navFolder = createFolderDom.call(fileExplorer, folder)
 
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
@@ -51,8 +56,8 @@ export class ModifiedFileExplorerView extends View {
             navFolder.toggleCollapsed = function() {}
 
             // Use collapse indicator for toggling collapse
-            navFolder.collapseIndicatorEl = navFolder.titleEl.querySelector('.nav-folder-collapse-indicator')
-            navFolder.collapseIndicatorEl.addEventListener('click', function(event: Event) {
+            if (!folder.children.filter(instance.isNavigable).length) navFolder.collapseIndicatorEl.addClass('empty')
+            else navFolder.collapseIndicatorEl.addEventListener('click', function(event: Event) {
                 event.stopPropagation()
                 toggleCollapsed.call(navFolder, true)
             })
