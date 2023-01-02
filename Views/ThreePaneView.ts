@@ -1,19 +1,25 @@
-import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, MarkdownView, WorkspaceSplit, Vault, TFolder, TFile, TAbstractFile } from "obsidian";
+import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, MarkdownView, WorkspaceSplit, Vault, TFolder, TFile, TAbstractFile, View } from "obsidian";
+import { ModifiedFileExplorerView } from "./ModifiedFileExplorerView";
 
-export const VIEW_TYPE_THREE_PANE_PARENT = "three-pane-parent-view";
+export const VIEW_TYPE_LIBRARY = "library-view";
 
-export class ThreePaneParentView extends ItemView {
+export class LibraryView extends ItemView {
     foldersElement: HTMLElement
     notesElement: HTMLElement
 
+    fileExplorerView: View
+
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
-
-        //  new app.internalPlugins.plugins['file-explorer'].views['file-explorer'](app.workspace.activeLeaf)
+        this.fileExplorerView = new ModifiedFileExplorerView(leaf, this.app, (event, folder) => {
+            this.populateNotes(folder)
+        });
+        this.addChild(this.fileExplorerView)
+        this.icon = "library"
     }
 
     getViewType() {
-        return VIEW_TYPE_THREE_PANE_PARENT;
+        return VIEW_TYPE_LIBRARY;
     }
 
     getDisplayText() {
@@ -22,72 +28,49 @@ export class ThreePaneParentView extends ItemView {
 
     async onOpen() {
         const vaultName = this.app.vault.getName()
-        this.icon = "library"
 
         const container = this.containerEl.children[1];
         container.empty();
-        container.addClasses(['workspace-split', 'mod-left-split', 'three-pane'])
+        container.addClass('library')
 
-        this.foldersElement = container.createDiv({cls: 'nav-folder mod-root library-folders'})
-        this.notesElement = container.createDiv({cls: 'nav-folder mod-root library-notes'})
+        this.foldersElement = container.createDiv({cls: 'folders'})
+        this.notesElement = container.createDiv({cls: 'notes'})
 
-        const title = this.foldersElement.createDiv({cls: 'nav-folder-title'})
-        title.createDiv("nav-folder-collapse-indicator collapse-icon")
-        title.createDiv({text: vaultName, cls: 'nav-folder-title-content'})
-
-        const rootFolder = this.app.vault.getRoot()
-        const rootElement = this.foldersElement.createDiv({cls: 'nav-folder-children'})
-        this.populateFolders(rootFolder, rootElement)
-    }
-
-    async populateFolders(rootFolder: TFolder, rootElement: HTMLElement) {
-        let activeFolder: HTMLElement
-
-        rootFolder.children.forEach(child => {
-            if (child instanceof TFile) return;
-            const folder = child as TFolder;
-            const title = rootElement
-                .createDiv('nav-folder')
-                .createDiv({cls: 'nav-folder-title', attr: {'data-path': folder.path}})
-            title.createDiv({text: child.name, cls: 'nav-folder-title-content'})
-
-            title.onClickEvent(event => {
-                if (activeFolder) activeFolder.removeClass('is-active')
-                activeFolder = title
-                activeFolder.addClass('is-active')
-
-                this.populateNotes(folder)
-            })
-        });
+        // Lift and shift baby
+        this.foldersElement.appendChild(this.fileExplorerView.containerEl)
     }
 
     async populateNotes(folder: TFolder) {
-        let activeNote: HTMLElement
+        let activeNoteElement: HTMLElement
+        let notesElement = this.notesElement
 
-        this.notesElement.empty()
+        notesElement.empty()
+        let hasNotes = false
         folder.children.forEach(async child => {
             if (!(child instanceof TFile)) return;
             const file = child as TFile;
             if (file.extension != 'md') return;
 
+            hasNotes = true
+
             let content = await this.app.vault.cachedRead(file)
-            const container = this.notesElement.createDiv('library-summary-container nav-file-title')
+            const container = notesElement.createDiv('library-summary-container nav-file-title')
             const noteSummary = container
                 .createDiv('library-summary')
             noteSummary.createDiv({text: file.basename, cls: 'title'})
             noteSummary.createDiv({text: content.slice(0, 300), cls: 'content'})
 
             noteSummary.onClickEvent(async event => {
-                if (activeNote) activeNote.removeClass('is-active')
-                activeNote = container
-                activeNote.addClass('is-active')
+                if (activeNoteElement) activeNoteElement.removeClass('is-active')
+                activeNoteElement = container
+                activeNoteElement.addClass('is-active')
 
                 this.app.workspace.getLeaf().openFile(file);
             })
         })
-    }
 
-    async onClose() {
-        // Nothing to clean up.
+        if (!hasNotes) {
+            notesElement.createDiv({text: 'No notes in this folder'})
+        }
     }
 }

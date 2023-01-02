@@ -1,6 +1,6 @@
 import { App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
-import { getModifiedFileExplorerView, VIEW_TYPE_MODIFIED_FILE_EXPLORER } from 'Views/ModifiedFileExplorerView';
-import { ThreePaneParentView, VIEW_TYPE_THREE_PANE_PARENT } from 'Views/ThreePaneView';
+import { ModifiedFileExplorerView, VIEW_TYPE_MODIFIED_FILE_EXPLORER } from 'Views/ModifiedFileExplorerView';
+import { LibraryView, VIEW_TYPE_LIBRARY } from 'Views/ThreePaneView';
 
 interface ThreePaneSettings {
     mySetting: string;
@@ -16,35 +16,49 @@ export default class ThreePanePlugin extends Plugin {
     async onload() {
         await this.loadSettings();
 
-        // this.registerView(
-        //     VIEW_TYPE_THREE_PANE_PARENT,
-        //     (leaf) => new ThreePaneParentView(leaf)
-        // );
+        console.log('*************************** Starting Library Plugin ***************************')
+
         this.registerView(
-            VIEW_TYPE_MODIFIED_FILE_EXPLORER,
-            // @ts-ignore
-            (leaf) => getModifiedFileExplorerView(this.app, leaf)
+            VIEW_TYPE_LIBRARY,
+            (leaf) => new LibraryView(leaf)
         );
+        // this.registerView(
+        //     VIEW_TYPE_MODIFIED_FILE_EXPLORER,
+        //     // @ts-ignore
+        //     (leaf) => getModifiedFileExplorerView(this.app, leaf)
+        // );
 
         this.addSettingTab(new ThreePaneSettingsTab(this.app, this));
 
         this.activateView();
     }
 
-    async activateView() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
+    async activateView() {  // Library
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
 
         const leaf = this.app.workspace.getLeftLeaf(false)
         await leaf.setViewState({
-            type: VIEW_TYPE_MODIFIED_FILE_EXPLORER,
+            type: VIEW_TYPE_LIBRARY,
             active: true,
         });
 
         this.app.workspace.revealLeaf(leaf);
     }
 
+    // async activateView() {  // File explorer
+    //     this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
+
+    //     const leaf = this.app.workspace.getLeftLeaf(false)
+    //     await leaf.setViewState({
+    //         type: VIEW_TYPE_MODIFIED_FILE_EXPLORER,
+    //         active: true,
+    //     });
+
+    //     this.app.workspace.revealLeaf(leaf);
+    // }
+
     onunload() {
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_MODIFIED_FILE_EXPLORER);
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
     }
 
     async loadSettings() {

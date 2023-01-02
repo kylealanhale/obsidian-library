@@ -7,19 +7,20 @@ If your plugin does not need CSS, delete this file.
 
 */
 
-.three-pane {
-    height: 100%;
+.library {
     overflow: hidden !important;
+    display: flex;
+    /* align-items: initial; */
 }
-.three-pane .nav-folder.mod-root {
+.library .folders, .library .notes {
     width: 50%;
+    height: 100%;
 }
-.library-folders {
-    /* border-right: 1px solid #333; */
+.library .folders {
     overflow: scroll;
     margin-right: 1em;
 }
-.library-notes {
+.library .notes {
     left: 50%;
     font-size: small;
     overflow: scroll;
@@ -43,7 +44,13 @@ If your plugin does not need CSS, delete this file.
     color: #666;
 }
 
-.three-pane .nav-file-title {
-    flex-direction: column;
-    align-items: initial;
+/* .library .nav-folder .nav-folder-collapse-indicator {
+    cursor: n-resize;
 }
+.library .nav-folder.is-collapsed .nav-folder-collapse-indicator {
+    cursor: s-resize;
+} */
+
+/* .library .nav-folder .nav-folder-collapse-indicator {
+    cursor: pointer;
+} */
