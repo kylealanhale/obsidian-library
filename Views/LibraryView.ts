@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceContainer, WorkspaceItem, WorkspaceLeaf, MarkdownView, WorkspaceSplit, Vault, TFolder, TFile, TAbstractFile, View } from "obsidian";
+import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile, View } from "obsidian";
 import { ModifiedFileExplorerView } from "./ModifiedFileExplorerView";
 
 export const VIEW_TYPE_LIBRARY = "library-view";
@@ -6,6 +6,10 @@ export const VIEW_TYPE_LIBRARY = "library-view";
 export class LibraryView extends ItemView {
     foldersElement: HTMLElement
     notesElement: HTMLElement
+
+    split: WorkspaceSplit
+    foldersLeaf: WorkspaceLeaf
+    notesLeaf: WorkspaceLeaf
 
     fileExplorerView: View
 
@@ -15,6 +19,7 @@ export class LibraryView extends ItemView {
             this.populateNotes(folder)
         });
         this.addChild(this.fileExplorerView)
+
         this.icon = "library"
     }
 
@@ -23,28 +28,58 @@ export class LibraryView extends ItemView {
     }
 
     getDisplayText() {
-        return "Notes";
+        return "Library";
     }
 
     async onOpen() {
-        const vaultName = this.app.vault.getName()
+        this.contentEl.empty();
+        this.contentEl.addClass('library')
 
-        const container = this.containerEl.children[1];
-        container.empty();
-        container.addClass('library')
+        // Set up split
+        // @ts-ignore
+        this.split = new WorkspaceSplit(this.app.workspace, 'vertical')
 
-        this.foldersElement = container.createDiv({cls: 'folders'})
-        this.notesElement = container.createDiv({cls: 'notes'})
-
+        // Populate folders leaf
+        // @ts-ignore
+        this.foldersLeaf = new WorkspaceLeaf(this.app)
+        // @ts-ignore
+        this.split.insertChild(1, this.foldersLeaf)
+        // @ts-ignore
+        this.foldersElement = this.foldersLeaf.containerEl
+        this.foldersElement.addClass('library-folders')
+        this.clearEl(this.foldersElement)
+        // @ts-ignore
+        this.split.containerEl.appendChild(this.foldersElement)
         // Lift and shift baby
         this.foldersElement.appendChild(this.fileExplorerView.containerEl)
+
+        // Prepare notes leaf
+        // @ts-ignore
+        this.notesLeaf = new WorkspaceLeaf(this.app)
+        // @ts-ignore
+        this.split.insertChild(1, this.notesLeaf)
+        // @ts-ignore
+        this.notesElement = this.notesLeaf.containerEl
+        this.notesElement.addClass('library-notes')
+        this.clearEl(this.notesElement)
+        // @ts-ignore
+        this.split.containerEl.appendChild(this.notesElement)
+
+        // Add it all
+        // @ts-ignore
+        this.contentEl.appendChild(this.split.containerEl)
+    }
+
+    clearEl(el: Element) {
+        const empties = el.querySelectorAll('.workspace-leaf-content:not([data-type="workspace-leaf-resize-handle"])')
+        empties.forEach(empty => empty.parentNode?.removeChild(empty))
     }
 
     async populateNotes(folder: TFolder) {
         let activeNoteElement: HTMLElement
         let notesElement = this.notesElement
 
-        notesElement.empty()
+        this.notesElement.empty()
         let hasNotes = false
         folder.children.forEach(async child => {
             if (!(child instanceof TFile)) return;

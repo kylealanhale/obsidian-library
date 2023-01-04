@@ -1,4 +1,4 @@
-import { App, Editor, ItemView, MarkdownView, Modal, Notice, Plugin, PluginSettingTab, Setting, WorkspaceLeaf } from 'obsidian';
+import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY } from 'Views/LibraryView';
 
 interface LibrarySettings {

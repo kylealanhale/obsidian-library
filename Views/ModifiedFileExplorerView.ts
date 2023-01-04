@@ -1,4 +1,4 @@
-import { TFile, TAbstractFile, View, App, WorkspaceLeaf, TFolder, Vault } from "obsidian";
+import { TFile, TAbstractFile, View, App, WorkspaceLeaf, TFolder } from "obsidian";
 
 export const VIEW_TYPE_MODIFIED_FILE_EXPLORER = "modified-file-explorer";
 
@@ -26,6 +26,14 @@ export class ModifiedFileExplorerView extends View {
         return VIEW_TYPE_MODIFIED_FILE_EXPLORER
     }
 
+    isNavigable(file: TAbstractFile) : boolean {
+        if (file instanceof TFile) return false;
+        // @ts-ignore
+        const attachmentsPath = app.vault.config.attachmentFolderPath.slice(2)
+        if (file.name == attachmentsPath) return false;
+        return true
+    }
+
     patchOnCreate(fileExplorer: any) {
         const onCreate = fileExplorer.onCreate
         const instance = this
@@ -34,14 +42,6 @@ export class ModifiedFileExplorerView extends View {
 
             onCreate.call(this, file)
         }
-    }
-
-    isNavigable(file: TAbstractFile) {
-        if (file instanceof TFile) return false;
-        // @ts-ignore
-        const attachmentsPath = app.vault.config.attachmentFolderPath.slice(2)
-        if (file.name == attachmentsPath) return false;
-        return true
     }
 
     patchCreateFolderDom(fileExplorer: any, clickHandler: any) {
