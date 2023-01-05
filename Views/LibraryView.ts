@@ -1,5 +1,7 @@
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile, View } from "obsidian";
 import { ModifiedFileExplorerView } from "./ModifiedFileExplorerView";
+import { markdownToTxt } from 'markdown-to-txt';
+import fm from 'front-matter'
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 
@@ -88,12 +90,11 @@ export class LibraryView extends ItemView {
 
             hasNotes = true
 
-            let content = await this.app.vault.cachedRead(file)
+            let content = await this.getPreviewText(file)
             const container = notesElement.createDiv('library-summary-container nav-file-title')
-            const noteSummary = container
-                .createDiv('library-summary')
+            const noteSummary = container.createDiv('library-summary')
             noteSummary.createDiv({text: file.basename, cls: 'title'})
-            noteSummary.createDiv({text: content.slice(0, 300), cls: 'content'})
+            noteSummary.createDiv({text: content, cls: 'content'})
 
             noteSummary.onClickEvent(async event => {
                 if (activeNoteElement) activeNoteElement.removeClass('is-active')
@@ -107,5 +108,17 @@ export class LibraryView extends ItemView {
         if (!hasNotes) {
             notesElement.createDiv({text: 'No notes in this folder'})
         }
+    }
+
+    previewCache: Record<string, string> = {}
+    async getPreviewText(file: TFile) {
+        if (this.previewCache[file.path]) return this.previewCache[file.path]
+
+        let content = await this.app.vault.cachedRead(file)
+        content = fm(content).body
+        content = content.slice(0, 300)
+        content = markdownToTxt(content)
+        this.previewCache[file.path] = content
+        return content
     }
 }
