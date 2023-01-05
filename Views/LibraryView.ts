@@ -106,7 +106,7 @@ export class LibraryView extends ItemView {
         })
 
         if (!hasNotes) {
-            notesElement.createDiv({text: 'No notes in this folder'})
+            notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
         }
     }
 

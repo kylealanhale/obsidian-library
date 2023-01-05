@@ -34,6 +34,9 @@
   * manual note sorting via dragging
   * stretch: manual folder sorting?
 
+### Commands
+* Focus on note in library (cmd+shift+j)
+
 ### Options
 * show attachments folder
 * show all supported file types instead of just notes

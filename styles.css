@@ -36,3 +36,14 @@
 .library .nav-folder-collapse-indicator.empty {
     visibility: hidden;
 }
+
+.library-empty {
+    border: 1px solid #222;
+    background-color: #2222;
+    color: #333;
+    font-size: 1.5em;
+    padding: 1em 3em;
+    margin: auto;
+    border-radius: 3px;
+    text-align: center;
+}
