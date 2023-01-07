@@ -1,7 +1,7 @@
 {
-	"name": "obsidian-three-pane",
+	"name": "obsidian-library",
 	"version": "0.1.0",
-	"description": "3pane",
+	"description": "library",
 	"main": "main.js",
 	"scripts": {
 		"dev": "node esbuild.config.mjs",

@@ -1,7 +1,7 @@
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile, View } from "obsidian";
 import { ModifiedFileExplorerView } from "./ModifiedFileExplorerView";
 import { markdownToTxt } from 'markdown-to-txt';
-import fm from 'front-matter'
+import fm from 'front-matter';
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 

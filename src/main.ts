@@ -1,5 +1,5 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
-import { LibraryView, VIEW_TYPE_LIBRARY } from 'Views/LibraryView';
+import { LibraryView, VIEW_TYPE_LIBRARY } from 'src/Views/LibraryView';
 
 interface LibrarySettings {
     mySetting: string;
