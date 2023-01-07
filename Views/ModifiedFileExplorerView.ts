@@ -47,6 +47,7 @@ export class ModifiedFileExplorerView extends View {
     patchCreateFolderDom(fileExplorer: any, clickHandler: any) {
         const instance = this
         const createFolderDom = fileExplorer.createFolderDom
+        let selectedEl: HTMLDivElement
         fileExplorer.createFolderDom = function (folder: TFolder) {
             let navFolder = createFolderDom.call(fileExplorer, folder)
 
@@ -65,6 +66,9 @@ export class ModifiedFileExplorerView extends View {
             // Let the parent view handle clicks
             if (clickHandler) {
                 navFolder.titleEl.addEventListener('click', (event: Event) => {
+                    if (selectedEl) selectedEl.removeClass('is-active')
+                    selectedEl = navFolder.titleEl
+                    selectedEl.addClass('is-active')
                     clickHandler(event, folder)
                 })
             }

@@ -13,7 +13,7 @@ export class LibraryView extends ItemView {
     foldersLeaf: WorkspaceLeaf
     notesLeaf: WorkspaceLeaf
 
-    fileExplorerView: View
+    fileExplorerView: ModifiedFileExplorerView
 
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
@@ -47,11 +47,11 @@ export class LibraryView extends ItemView {
         // @ts-ignore
         this.split.insertChild(1, this.foldersLeaf)
         // @ts-ignore
-        this.foldersElement = this.foldersLeaf.containerEl
-        this.foldersElement.addClass('library-folders')
-        this.clearEl(this.foldersElement)
+        this.clearEl(this.foldersLeaf.containerEl)
         // @ts-ignore
-        this.split.containerEl.appendChild(this.foldersElement)
+        this.foldersElement = this.foldersLeaf.containerEl.createDiv('library-folders')
+        // @ts-ignore
+        this.split.containerEl.appendChild(this.foldersLeaf.containerEl)
         // Lift and shift baby
         this.foldersElement.appendChild(this.fileExplorerView.containerEl)
 
@@ -61,11 +61,11 @@ export class LibraryView extends ItemView {
         // @ts-ignore
         this.split.insertChild(1, this.notesLeaf)
         // @ts-ignore
-        this.notesElement = this.notesLeaf.containerEl
-        this.notesElement.addClass('library-notes')
-        this.clearEl(this.notesElement)
+        this.clearEl(this.notesLeaf.containerEl)
         // @ts-ignore
-        this.split.containerEl.appendChild(this.notesElement)
+        this.notesElement = this.notesLeaf.containerEl.createDiv('library-notes')
+        // @ts-ignore
+        this.split.containerEl.appendChild(this.notesLeaf.containerEl)
 
         // Add it all
         // @ts-ignore

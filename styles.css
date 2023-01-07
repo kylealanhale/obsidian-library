@@ -15,10 +15,10 @@
 .library .library-notes {
     font-size: small;
     overflow: scroll;
-    background-color: #111;
-    padding: 1em;
-    margin-top: -1em;
-    margin-bottom: -1em;
+    background-color: #2222 !important;
+    /* padding: 1em; */
+    /* margin-top: -1em; */
+    /* margin-bottom: -1em; */
 }
 .library-summary-container {
     --line-height: 1.5em;
@@ -46,4 +46,8 @@
     margin: auto;
     border-radius: 3px;
     text-align: center;
+}
+
+.workspace-tabs:last-child .library .workspace-leaf-resize-handle {
+    display: block !important;
 }

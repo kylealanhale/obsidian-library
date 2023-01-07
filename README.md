@@ -7,6 +7,8 @@
 * selected folder isn't indicated
 * vault folder label isn't treated the same
 * incorrect folder count because of attachments
+* √ the resize handle apparently broke when I restarted the app?
+* using leaves messed up the notes background color
 
 ### General
 * column resizing
@@ -28,7 +30,7 @@
   * unlink from stock file explorer
   * store which note is selected within folder
   * navigate to stored selected note or first note in list
-  * better empty states
+  * √ better empty states
 * sorting
   * UI
   * manual note sorting via dragging
