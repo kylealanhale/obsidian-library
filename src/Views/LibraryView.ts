@@ -1,5 +1,5 @@
-import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile, View } from "obsidian";
-import { ModifiedFileExplorerView } from "./ModifiedFileExplorerView";
+import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile } from "obsidian";
+import { FileExplorerViewWrapper } from "./FileExplorerViewWrapper";
 import { markdownToTxt } from 'markdown-to-txt';
 import fm from 'front-matter';
 
@@ -13,14 +13,14 @@ export class LibraryView extends ItemView {
     foldersLeaf: WorkspaceLeaf
     notesLeaf: WorkspaceLeaf
 
-    fileExplorerView: ModifiedFileExplorerView
+    wrapper: FileExplorerViewWrapper
 
     constructor(leaf: WorkspaceLeaf) {
         super(leaf);
-        this.fileExplorerView = new ModifiedFileExplorerView(leaf, this.app, (event, folder) => {
+        this.wrapper = new FileExplorerViewWrapper(leaf, this.app, (event, folder) => {
             this.populateNotes(folder)
         });
-        this.addChild(this.fileExplorerView)
+        this.addChild(this.wrapper.view)
 
         this.icon = "library"
     }
@@ -44,31 +44,21 @@ export class LibraryView extends ItemView {
         // Populate folders leaf
         // @ts-ignore
         this.foldersLeaf = new WorkspaceLeaf(this.app)
-        // @ts-ignore
         this.split.insertChild(1, this.foldersLeaf)
-        // @ts-ignore
         this.clearEl(this.foldersLeaf.containerEl)
-        // @ts-ignore
         this.foldersElement = this.foldersLeaf.containerEl.createDiv('library-folders')
-        // @ts-ignore
         this.split.containerEl.appendChild(this.foldersLeaf.containerEl)
-        // Lift and shift baby
-        this.foldersElement.appendChild(this.fileExplorerView.containerEl)
+        this.foldersElement.appendChild(this.wrapper.view.containerEl)
 
         // Prepare notes leaf
         // @ts-ignore
         this.notesLeaf = new WorkspaceLeaf(this.app)
-        // @ts-ignore
         this.split.insertChild(1, this.notesLeaf)
-        // @ts-ignore
         this.clearEl(this.notesLeaf.containerEl)
-        // @ts-ignore
         this.notesElement = this.notesLeaf.containerEl.createDiv('library-notes')
-        // @ts-ignore
         this.split.containerEl.appendChild(this.notesLeaf.containerEl)
 
         // Add it all
-        // @ts-ignore
         this.contentEl.appendChild(this.split.containerEl)
     }
 

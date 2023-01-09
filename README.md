@@ -49,4 +49,4 @@
 * rewrite UI in svelte/react? what's the mobile impact for that? I guess none, since it's all transpiled to JS, and I can't add platform-specific compiled code either
 
 ## Tech debt
-* typescript complaints and `@ts-ignore` congesting the place
+* √ typescript complaints and `@ts-ignore` congesting the place
