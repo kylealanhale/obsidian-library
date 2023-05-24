@@ -1,11 +1,14 @@
 import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile } from "obsidian";
-import { FileExplorerViewWrapper } from "./FileExplorerViewWrapper";
+import { FileExplorerWrapper } from "./FileExplorerViewWrapper";
 import { markdownToTxt } from 'markdown-to-txt';
 import fm from 'front-matter';
+import LibraryPlugin from "src/main";
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 
 export class LibraryView extends ItemView {
+    plugin: LibraryPlugin
+
     foldersElement: HTMLElement
     notesElement: HTMLElement
 
@@ -13,11 +16,12 @@ export class LibraryView extends ItemView {
     foldersLeaf: WorkspaceLeaf
     notesLeaf: WorkspaceLeaf
 
-    wrapper: FileExplorerViewWrapper
+    wrapper: FileExplorerWrapper
 
-    constructor(leaf: WorkspaceLeaf) {
+    constructor(leaf: WorkspaceLeaf, plugin: LibraryPlugin) {
         super(leaf);
-        this.wrapper = new FileExplorerViewWrapper(leaf, this.app, (event, folder) => {
+        this.plugin = plugin
+        this.wrapper = new FileExplorerWrapper(leaf, this.plugin, (event, folder) => {
             this.populateNotes(folder)
         });
         this.addChild(this.wrapper.view)
@@ -34,6 +38,7 @@ export class LibraryView extends ItemView {
     }
 
     async onOpen() {
+        console.log('start')
         this.contentEl.empty();
         this.contentEl.addClass('library')
 
@@ -58,8 +63,12 @@ export class LibraryView extends ItemView {
         this.notesElement = this.notesLeaf.containerEl.createDiv('library-notes')
         this.split.containerEl.appendChild(this.notesLeaf.containerEl)
 
-        // Add it all
+        // Add it all 
         this.contentEl.appendChild(this.split.containerEl)
+
+        // Open to last location
+        this.wrapper.revealCurrentPath()
+        console.log('done')
     }
 
     clearEl(el: Element) {

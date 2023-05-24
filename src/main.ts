@@ -2,12 +2,12 @@ import { App, Modal, Plugin, PluginSettingTab, Setting } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY } from 'src/Views/LibraryView';
 
 interface LibrarySettings {
-    mySetting: string;
+    currentPath: string;
 }
 
 const DEFAULT_SETTINGS: LibrarySettings = {
-    mySetting: 'default'
-}
+    currentPath: '/'
+}//
 
 export default class LibraryPlugin extends Plugin {
     settings: LibrarySettings;
@@ -19,7 +19,7 @@ export default class LibraryPlugin extends Plugin {
 
         this.registerView(
             VIEW_TYPE_LIBRARY,
-            (leaf) => new LibraryView(leaf)
+            (leaf) => new LibraryView(leaf, this)
         );
 
         this.addSettingTab(new LibrarySettingsTab(this.app, this));
@@ -41,6 +41,7 @@ export default class LibraryPlugin extends Plugin {
 
     onunload() {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
+        this.saveSettings();
     }
 
     async loadSettings() {
@@ -88,10 +89,10 @@ class LibrarySettingsTab extends PluginSettingTab {
             .setDesc('It\'s a secret')
             .addText(text => text
                 .setPlaceholder('Enter your secret')
-                .setValue(this.plugin.settings.mySetting)
+                .setValue(this.plugin.settings.currentPath)
                 .onChange(async (value) => {
                     console.log('Secret: ' + value);
-                    this.plugin.settings.mySetting = value;
+                    this.plugin.settings.currentPath = value;
                     await this.plugin.saveSettings();
                 }));
     }

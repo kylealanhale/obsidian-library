@@ -8,10 +8,27 @@ declare module 'obsidian' {
         createFolderDom(folder: TFolder): FileExplorerNavFolder;
         getViewType(): string;
         getDisplayText(): string;
+        revealInFolder(path: string): void;
+        sort(): void;
+        setFocusedItem(item: FileExplorerNavBase | null): void;
+    }
+
+    export class InternalPlugins {
+        getPluginById(id: string): Plugin
+        plugins: { [key: string] : PluginDetails }
+    }
+
+    export class FileExplorerPlugin extends Plugin {
+        revealInFolder(fileItem: TAbstractFile): void
+    }
+
+    export class PluginDetails {
+        instance: Plugin
+        views: { [key: string] : typeof View }
     }
 
     export interface App {
-        internalPlugins: { 'plugins': { [key: string] : Plugin } }
+        internalPlugins: InternalPlugins
     }
 
     export interface WorkspaceLeaf {
@@ -33,7 +50,7 @@ declare module 'obsidian' {
 
     export interface FileExplorerNavBase {
         el: HTMLDivElement;
-        titleEl: HTMLDivElement;
+        selfEl: HTMLDivElement;
         titleInnerEl: HTMLDivElement;
         fileExplorer: FileExplorerView;
     }
@@ -45,6 +62,6 @@ declare module 'obsidian' {
     export interface FileExplorerNavFolder extends FileExplorerNavBase {
         file: TFolder;
         childrenEl: HTMLDivElement;
-        collapseIndicatorEl: HTMLDivElement;
+        collapseEl: HTMLDivElement;
     }
 }

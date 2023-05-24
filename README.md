@@ -8,7 +8,7 @@
 * vault folder label isn't treated the same
 * incorrect folder count because of attachments
 * √ the resize handle apparently broke when I restarted the app?
-* using leaves messed up the notes background color
+* √ using leaves messed up the notes background color
 
 ### General
 * column resizing
@@ -38,6 +38,7 @@
 
 ### Commands
 * Focus on note in library (cmd+shift+j)
+* create note in current folder (the current cmd+N uses the location of the current note)
 
 ### Options
 * show attachments folder

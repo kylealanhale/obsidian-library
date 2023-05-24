@@ -16,7 +16,9 @@
     font-size: small;
     overflow: scroll;
     background-color: #2222 !important;
-
+    display: flex;
+    flex: 0 1 1;
+    flex-direction: column;
 }
 .library-summary-container {
     --line-height: 1.5em;
