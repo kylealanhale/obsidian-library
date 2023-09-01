@@ -38,7 +38,6 @@ export class LibraryView extends ItemView {
     }
 
     async onOpen() {
-        console.log('start')
         this.contentEl.empty();
         this.contentEl.addClass('library')
 
@@ -49,6 +48,7 @@ export class LibraryView extends ItemView {
         // Populate folders leaf
         // @ts-ignore
         this.foldersLeaf = new WorkspaceLeaf(this.app)
+        this.foldersLeaf.containerEl.addClass('library-folders-container')
         this.split.insertChild(1, this.foldersLeaf)
         this.clearEl(this.foldersLeaf.containerEl)
         this.foldersElement = this.foldersLeaf.containerEl.createDiv('library-folders')
@@ -58,6 +58,7 @@ export class LibraryView extends ItemView {
         // Prepare notes leaf
         // @ts-ignore
         this.notesLeaf = new WorkspaceLeaf(this.app)
+        this.notesLeaf.containerEl.addClass('library-notes-container')
         this.split.insertChild(1, this.notesLeaf)
         this.clearEl(this.notesLeaf.containerEl)
         this.notesElement = this.notesLeaf.containerEl.createDiv('library-notes')
@@ -67,8 +68,7 @@ export class LibraryView extends ItemView {
         this.contentEl.appendChild(this.split.containerEl)
 
         // Open to last location
-        this.wrapper.revealCurrentPath()
-        console.log('done')
+        // this.wrapper.revealCurrentPath()  // Currently causes an error and I'm not sure why
     }
 
     clearEl(el: Element) {
@@ -82,17 +82,38 @@ export class LibraryView extends ItemView {
 
         this.notesElement.empty()
         let hasNotes = false
-        folder.children.forEach(async child => {
+
+        let children = Array.from(folder.children)
+        let id = this.plugin.libraryData.ids[folder.path]
+        console.log('before:')
+        children.forEach(child => console.log(`* ${this.plugin.libraryData.ids[child.path]}: ${child.name}`))
+        if (id) {
+            let manualSortIndex = this.plugin.libraryData.manualSortIndices[id].notes
+            console.log('sort index:', manualSortIndex)
+            children.sort((first, second) => {
+                let firstId = this.plugin.libraryData.ids[first.path], firstIndex = manualSortIndex[firstId] ?? Number.MAX_VALUE
+                let secondId = this.plugin.libraryData.ids[second.path], secondIndex = manualSortIndex[secondId] ?? Number.MAX_VALUE
+                console.log(`sort indices: ${firstId}: ${manualSortIndex[firstId]} => ${firstIndex}, ${secondId}: ${manualSortIndex[secondId]}, => ${secondIndex}`)
+                return firstIndex - secondIndex
+            })
+        }
+        console.log('after:')
+        children.forEach(child => console.log(`* ${this.plugin.libraryData.ids[child.path]}: ${child.name}`))
+
+        children.forEach(async child => {
             if (!(child instanceof TFile)) return;
-            const file = child as TFile;
+            const file = child as TFile; 
             if (file.extension != 'md') return;
 
             hasNotes = true
 
-            let content = await this.getPreviewText(file)
+            let frontmatter = this.app.metadataCache.getCache(file.path)?.frontmatter ?? {}
+            let content = frontmatter.preview ? frontmatter.preview : await this.generatePreviewText(file)
+            let title = frontmatter.title ?? file.basename
+            if (content.startsWith(title)) content = content.slice(title.length)
             const container = notesElement.createDiv('library-summary-container nav-file-title')
             const noteSummary = container.createDiv('library-summary')
-            noteSummary.createDiv({text: file.basename, cls: 'title'})
+            noteSummary.createDiv({text: title, cls: 'title'})
             noteSummary.createDiv({text: content, cls: 'content'})
 
             noteSummary.onClickEvent(async event => {
@@ -110,7 +131,7 @@ export class LibraryView extends ItemView {
     }
 
     previewCache: Record<string, string> = {}
-    async getPreviewText(file: TFile) {
+    async generatePreviewText(file: TFile) {
         if (this.previewCache[file.path]) return this.previewCache[file.path]
 
         let content = await this.app.vault.cachedRead(file)

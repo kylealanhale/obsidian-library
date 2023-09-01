@@ -63,5 +63,6 @@ declare module 'obsidian' {
         file: TFolder;
         childrenEl: HTMLDivElement;
         collapseEl: HTMLDivElement;
+        toggleCollapsed(yes: boolean): void;
     }
 }

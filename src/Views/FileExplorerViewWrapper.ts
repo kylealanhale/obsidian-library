@@ -1,8 +1,9 @@
-import { TFile, TAbstractFile, App, WorkspaceLeaf, TFolder, FileExplorerView, FileExplorerPlugin, Plugin, PluginDetails } from "obsidian";
+import { TFile, TAbstractFile, WorkspaceLeaf, TFolder, FileExplorerView, FileExplorerPlugin, FileExplorerNavFolder } from "obsidian";
 import LibraryPlugin from "src/main";
 
 // class FileExplorerView extends View { }
 export type ClickHandler = (event: Event | null, folder: TFolder) => void;
+
 
 export class FileExplorerWrapper {
     clickHandler: ClickHandler
@@ -23,7 +24,7 @@ export class FileExplorerWrapper {
         this.patchOnCreate()
         this.patchCreateFolderDom()
         this.view.onload = this.onload.bind(this.view)
-        console.log('this.view.fileItems:', Object.keys(this.view.fileItems))
+        // console.log('this.view.fileItems:', Object.keys(this.view.fileItems))
         // this.view.dom.infinityScroll.rootEl = this.view.fileItems["/"]
         // const instance = this
         // const computeSync = this.view.dom.infinityScroll.computeSync
@@ -31,10 +32,7 @@ export class FileExplorerWrapper {
         //     console.log('this:', this, 'this.rootEl:', this.rootEl)
         //     computeSync.call(this)
         // }
-
-
     }
-
     isNavigable(file: TAbstractFile) : boolean {
         if (file instanceof TFile) return false;
         const attachmentsPath = app.vault.getConfig("attachmentFolderPath").slice(2)
@@ -43,14 +41,14 @@ export class FileExplorerWrapper {
     }
 
     onload() {
-        console.log('onload!!!')
+        // console.log('onload!!!')
     }
 
     patchLoad() {
         const instance = this;
         const load = instance.view.load;
         instance.view.load = function () {
-            console.log('loading')
+            // console.log('loading')
             load.call(this);
             instance.revealCurrentPath()
         }
@@ -61,7 +59,7 @@ export class FileExplorerWrapper {
         const onCreate = instance.view.onCreate
         instance.view.onCreate = function(file: TAbstractFile) {
             if (!instance.isNavigable(file)) return;
-            onCreate.call(this, file)
+            onCreate.call(instance.view, file)
         }
     }
 
@@ -69,11 +67,14 @@ export class FileExplorerWrapper {
         const instance = this
         const createFolderDom = instance.view.createFolderDom
         instance.view.createFolderDom = function (folder: TFolder) {
-            let navFolder = createFolderDom.call(instance.view, folder)
+            let navFolder = createFolderDom.call(instance.view, folder) as FileExplorerNavFolder
+            if (!navFolder) {
+                console.log('missing navFolder for folder:', folder)
+            }
 
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
-            const toggleCollapsed = navFolder.toggleCollapsed
+            const toggleCollapsed = navFolder.toggleCollapsed 
             navFolder.toggleCollapsed = function() {}
 
             // Use collapse indicator for toggling collapse
@@ -86,7 +87,7 @@ export class FileExplorerWrapper {
             // Let the parent view handle clicks
             navFolder.selfEl.addEventListener('click', (event: Event) => {
                 instance.setActiveEl(navFolder.selfEl)
-                instance.library.settings.currentPath = folder.path
+                instance.library.libraryData.settings.currentPath = folder.path
                 instance.clickHandler(event, folder)
             })
 
@@ -101,12 +102,12 @@ export class FileExplorerWrapper {
     }
 
     revealCurrentPath() {
-        let abstractFile = this.plugin.app.vault.getAbstractFileByPath(this.library.settings.currentPath)
-        let folder: TFolder = abstractFile instanceof TFile ? (abstractFile as TFile).parent : abstractFile as TFolder
-        if (folder instanceof TFile) folder = (folder as TFile).parent
+        let abstractFile = this.plugin.app.vault.getAbstractFileByPath(this.library.libraryData.settings.currentPath)
+        let folder = abstractFile instanceof TFile ? (abstractFile as TFile).parent as TFolder : abstractFile as TFolder
+        if (folder instanceof TFile) folder = (folder as TFile).parent as TFolder
         let navItem = this.view.fileItems[folder.path]
-        this.library.loadSettings()
-        console.log(this.library.settings, this.view.files, this.view.fileItems)
+        this.library.loadLibraryData()
+        // console.log(this.library.settings, this.view.files, this.view.fileItems)
         this.view.sort()
 
         // TODO: change to manual reveal

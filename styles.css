@@ -1,6 +1,12 @@
+:root {
+    --notes-background-color: #fcfcfc;
+  }
+  
+
 .library {
     overflow: hidden !important;
     display: flex;
+    padding: 0 !important;
 }
 .library .workspace-split {
     width: 100%;
@@ -15,10 +21,16 @@
 .library .library-notes {
     font-size: small;
     overflow: scroll;
-    background-color: #2222 !important;
+    background-color: var(--notes-background-color) !important;
     display: flex;
     flex: 0 1 1;
     flex-direction: column;
+}
+.library-notes-container .workspace-leaf-resize-handle {
+    display: none !important;
+}
+.library-folders-container .workspace-leaf-resize-handle {
+    display: block !important;
 }
 .library-summary-container {
     --line-height: 1.5em;
@@ -30,6 +42,11 @@
     margin: 0;
     overflow: hidden;
 }
+.library-summary .title {
+    font-weight: bold;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
 .library-summary .content {
     color: #666;
 }
@@ -38,16 +55,12 @@
 }
 
 .library-empty {
-    border: 1px solid #222;
-    background-color: #2222;
-    color: #333;
+    /* border: 1px solid #222; */
+    background-color: #eee;
+    color: var(--notes-background-color);
     font-size: 1.5em;
     padding: 1em 3em;
     margin: auto;
     border-radius: 3px;
     text-align: center;
-}
-
-.workspace-tabs:last-child .library .workspace-leaf-resize-handle {
-    display: block !important;
 }
