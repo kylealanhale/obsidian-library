@@ -8,7 +8,8 @@ declare module 'obsidian' {
         createFolderDom(folder: TFolder): FileExplorerNavFolder;
         getViewType(): string;
         getDisplayText(): string;
-        revealInFolder(path: string): void;
+        revealInFolder(file: TAbstractFile): void;
+        afterCreate(): void;
         sort(): void;
         setFocusedItem(item: FileExplorerNavBase | null): void;
     }

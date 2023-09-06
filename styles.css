@@ -64,8 +64,3 @@
     border-radius: 3px;
     text-align: center;
 }
-
-
-.markdown-source-view.is-live-preview .cm-line:has(.cm-hmd-frontmatter) {
-    display: none !important;
-}

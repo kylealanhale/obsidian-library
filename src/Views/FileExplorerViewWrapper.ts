@@ -2,83 +2,80 @@ import { TFile, TAbstractFile, WorkspaceLeaf, TFolder, FileExplorerView, FileExp
 import LibraryPlugin from "src/main";
 
 // class FileExplorerView extends View { }
-export type ClickHandler = (event: Event | null, folder: TFolder) => void;
+export type ClickHandler = (folder: TFolder) => void;
 
 
 export class FileExplorerWrapper {
     clickHandler: ClickHandler
     view: FileExplorerView
-    plugin: FileExplorerPlugin
-    library: LibraryPlugin
+    fileExplorerPlugin: FileExplorerPlugin
+    libraryPlugin: LibraryPlugin
     selectedEl: HTMLDivElement
 
     constructor(leaf: WorkspaceLeaf, libraryPlugin: LibraryPlugin, clickHandler: ClickHandler) {
         const explorerDetails = libraryPlugin.app.internalPlugins.plugins['file-explorer']
-        this.plugin = explorerDetails.instance as FileExplorerPlugin
+        this.fileExplorerPlugin = explorerDetails.instance as FileExplorerPlugin
         const FileExplorerViewConstructor = explorerDetails.views['file-explorer'] as typeof FileExplorerView
 
         this.view = new FileExplorerViewConstructor(leaf)
-        this.library = libraryPlugin
+        this.libraryPlugin = libraryPlugin
         this.clickHandler = clickHandler
 
+        // First the FileExplorerView view gets loaded, part of which is...
+        this.patchLoad()
+        // ...calling onCreate on every abstract file.
         this.patchOnCreate()
+        // onCreate then creates the DOM for each folder in the tree.
         this.patchCreateFolderDom()
-        this.view.onload = this.onload.bind(this.view)
-        // console.log('this.view.fileItems:', Object.keys(this.view.fileItems))
-        // this.view.dom.infinityScroll.rootEl = this.view.fileItems["/"]
+
+        // this.view.dom.infinityScroll.rootEl = this.viewf.fileItems["/"]
         // const instance = this
         // const computeSync = this.view.dom.infinityScroll.computeSync
         // this.view.dom.infinityScroll.computeSync = function() {
-        //     console.log('this:', this, 'this.rootEl:', this.rootEl)
         //     computeSync.call(this)
         // }
     }
     isNavigable(file: TAbstractFile) : boolean {
         if (file instanceof TFile) return false;
-        const attachmentsPath = app.vault.getConfig("attachmentFolderPath").slice(2)
+        const attachmentsPath = this.libraryPlugin.app.vault.getConfig("attachmentFolderPath").slice(2)
         if (file.name == attachmentsPath) return false;
         return true
     }
 
-    onload() {
-        // console.log('onload!!!')
-    }
-
     patchLoad() {
         const instance = this;
-        const load = instance.view.load;
+        const originalLoad = instance.view.load.bind(this.view);
         instance.view.load = function () {
-            // console.log('loading')
-            load.call(this);
+            originalLoad()
             instance.revealCurrentPath()
         }
     }
 
     patchOnCreate() {
         const instance = this
-        const onCreate = instance.view.onCreate
+        const originalOnCreate = instance.view.onCreate.bind(this.view)
         instance.view.onCreate = function(file: TAbstractFile) {
             if (!instance.isNavigable(file)) return;
-            onCreate.call(instance.view, file)
+            originalOnCreate(file)
         }
     }
 
     patchCreateFolderDom() {
         const instance = this
-        const createFolderDom = instance.view.createFolderDom
+        const originalCreateFolderDom = instance.view.createFolderDom.bind(this.view)
         instance.view.createFolderDom = function (folder: TFolder) {
-            let navFolder = createFolderDom.call(instance.view, folder) as FileExplorerNavFolder
+            let navFolder = originalCreateFolderDom(folder) as FileExplorerNavFolder
             if (!navFolder) {
                 console.log('missing navFolder for folder:', folder)
             }
 
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
-            const toggleCollapsed = navFolder.toggleCollapsed 
+            const toggleCollapsed = navFolder.toggleCollapsed
             navFolder.toggleCollapsed = function() {}
 
             // Use collapse indicator for toggling collapse
-            if (!folder.children.filter(instance.isNavigable).length) navFolder.collapseEl.addClass('empty')
+            if (!folder.children.filter(instance.isNavigable.bind(instance)).length) navFolder.collapseEl.addClass('empty')
             else navFolder.collapseEl.addEventListener('click', function(event: Event) {
                 event.stopPropagation()
                 toggleCollapsed.call(navFolder, true)
@@ -87,8 +84,8 @@ export class FileExplorerWrapper {
             // Let the parent view handle clicks
             navFolder.selfEl.addEventListener('click', (event: Event) => {
                 instance.setActiveEl(navFolder.selfEl)
-                instance.library.libraryData.settings.currentPath = folder.path
-                instance.clickHandler(event, folder)
+                instance.libraryPlugin.libraryData.settings.currentPath = folder.path
+                instance.clickHandler(folder)
             })
 
             return navFolder
@@ -102,19 +99,17 @@ export class FileExplorerWrapper {
     }
 
     revealCurrentPath() {
-        let abstractFile = this.plugin.app.vault.getAbstractFileByPath(this.library.libraryData.settings.currentPath)
+        let abstractFile = this.fileExplorerPlugin.app.vault.getAbstractFileByPath(this.libraryPlugin.libraryData.settings.currentPath)
         let folder = abstractFile instanceof TFile ? (abstractFile as TFile).parent as TFolder : abstractFile as TFolder
         if (folder instanceof TFile) folder = (folder as TFile).parent as TFolder
         let navItem = this.view.fileItems[folder.path]
-        this.library.loadLibraryData()
-        // console.log(this.library.settings, this.view.files, this.view.fileItems)
+        this.libraryPlugin.loadLibraryData()
         this.view.sort()
 
-        // TODO: change to manual reveal
-        this.view.revealInFolder(folder.path)
+        this.view.revealInFolder(folder)
 
         this.view.setFocusedItem(null)
         this.setActiveEl(navItem.selfEl)
-        this.clickHandler(null, folder)
+        this.clickHandler(folder)
     }
 }

@@ -159,7 +159,6 @@ class LibrarySettingsTab extends PluginSettingTab {
 }
 
 // To do:
-// * Allow for manual sorting of folders and notes
 // * Update notes list when new note is created, deleted, or moved
 // * Add sorting options to notes list
-// * fix errors in console
+// * Fix errors in console
