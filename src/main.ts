@@ -1,5 +1,5 @@
 import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFolder } from 'obsidian';
-import { LibraryView, VIEW_TYPE_LIBRARY } from 'src/Views/LibraryView';
+import { LibraryView, VIEW_TYPE_LIBRARY, EventHandler } from 'src/Views/LibraryView';
 import { SortSpec } from "src/SortSpec";
 import * as yaml from 'yaml'
 
@@ -26,8 +26,9 @@ interface LibrarySettings {
 }
 
 export default class LibraryPlugin extends Plugin {
-    libraryData: LibraryData;
-    eventRefs: any[] = [];
+    libraryData: LibraryData
+    eventRefs: any[] = []
+    eventHandlers: EventHandler[] = []
 
     async onload() {
         console.log('*************************** Starting Library Plugin ***************************')
@@ -51,12 +52,8 @@ export default class LibraryPlugin extends Plugin {
             if (file.parent && this.libraryData.ids[file.parent.path]) { return }
             const parent = file.parent as TFolder
 
-            let specPath = `${parent.path}/.obsidian-folder`
-            if (!await file.vault.adapter.exists(specPath)) { return }
-            const text = await file.vault.adapter.read(specPath)
-            
-            // Parse spec and store in cache
-            let spec = yaml.parse(text) as SortSpec
+            let spec = await this.getSortSpec(parent)
+            if (!spec) { return }
             this.libraryData.ids[parent.path] = spec.id
 
             // Cache manual sort index
@@ -84,6 +81,13 @@ export default class LibraryPlugin extends Plugin {
         this.eventRefs.push(this.app.vault.on('delete', handleDelete))
     }
 
+    async getSortSpec(folder: TFolder): Promise<SortSpec | null> {
+        let specPath = `${folder.path}/.obsidian-folder`
+        if (!await folder.vault.adapter.exists(specPath)) { return null }
+        const text = await folder.vault.adapter.read(specPath)
+        return yaml.parse(text) as SortSpec
+    }
+
     async activateView() {  // Library
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
 
@@ -100,6 +104,9 @@ export default class LibraryPlugin extends Plugin {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
         this.eventRefs.forEach((ref) => {
             this.app.metadataCache.offref(ref);
+        })
+        this.eventHandlers.forEach((handler) => {
+            handler.element.removeEventListener(handler.name, handler.fn)
         })
         this.saveLibraryData();
     }
@@ -162,3 +169,4 @@ class LibrarySettingsTab extends PluginSettingTab {
 // * Update notes list when new note is created, deleted, or moved
 // * Add sorting options to notes list
 // * Fix errors in console
+// * Allow user to drag notes to reorder them

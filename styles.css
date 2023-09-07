@@ -1,12 +1,13 @@
 :root {
     --notes-background-color: #fcfcfc;
-  }
-  
-
+}
 .library {
     overflow: hidden !important;
     display: flex;
     padding: 0 !important;
+}
+.library .nav-buttons-container {
+    display: none;
 }
 .library .workspace-split {
     width: 100%;
@@ -22,6 +23,7 @@
     font-size: small;
     overflow: scroll;
     background-color: var(--notes-background-color) !important;
+    /* background-color: green !important; */
     display: flex;
     flex: 0 1 1;
     flex-direction: column;
@@ -34,12 +36,21 @@
 }
 .library-summary-container {
     --line-height: 1.5em;
+    /* margin: 0; */
+    /* border-radius: 0; */
+    /* background-color: red; */
+    /* margin: 0 0.5em; */
     padding: calc(var(--line-height) / 2);
+}
+.library-summary-container.receiving {
+    background-color: #eee;
 }
 .library-summary {
     line-height: var(--line-height);
     height: calc(var(--line-height) * 5);
     margin: 0;
+    /* background-color: red; */
+    /* border-radius: 3px; */
     overflow: hidden;
 }
 .library-summary .title {
@@ -50,12 +61,19 @@
 .library-summary .content {
     color: #666;
 }
+.library-reorder-marker {
+    display: none;
+}
+.library-reorder-marker.dragging {
+    display: block;
+    outline: 1px solid #a7a5c9;
+    height: 0px;
+    width: 100%;
+}
 .library .nav-folder-collapse-indicator.empty {
     visibility: hidden;
 }
-
 .library-empty {
-    /* border: 1px solid #222; */
     background-color: #eee;
     color: var(--notes-background-color);
     font-size: 1.5em;

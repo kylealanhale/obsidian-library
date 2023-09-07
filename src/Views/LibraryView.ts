@@ -1,4 +1,4 @@
-import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile } from "obsidian";
+import { ItemView, WorkspaceLeaf, WorkspaceSplit, TFolder, TFile, LibraryDivElement } from "obsidian";
 import { FileExplorerWrapper } from "./FileExplorerViewWrapper";
 import { markdownToTxt } from 'markdown-to-txt';
 import fm from 'front-matter';
@@ -6,11 +6,19 @@ import LibraryPlugin from "src/main";
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 
+export interface EventHandler {
+    element: any
+    name: string
+    fn: Function
+}
+
+
 export class LibraryView extends ItemView {
     plugin: LibraryPlugin
 
     foldersElement: HTMLElement
     notesElement: HTMLElement
+    reorderMarkerElement: HTMLElement
 
     split: WorkspaceSplit
     leaf: WorkspaceLeaf
@@ -18,6 +26,9 @@ export class LibraryView extends ItemView {
     notesLeaf: WorkspaceLeaf
 
     wrapper: FileExplorerWrapper
+
+    currentlyDragging: LibraryDivElement | null
+    currentlyReceiving: Element
 
     constructor(leaf: WorkspaceLeaf, plugin: LibraryPlugin) {
         super(leaf);
@@ -37,6 +48,8 @@ export class LibraryView extends ItemView {
     }
 
     async onOpen() {
+        const instance = this
+
         // Set it up
         this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
         this.contentEl.empty();
@@ -65,9 +78,115 @@ export class LibraryView extends ItemView {
         this.notesElement = this.notesLeaf.containerEl.createDiv('library-notes')
         this.split.containerEl.appendChild(this.notesLeaf.containerEl)
 
+        // Set up drag and drop
+        this.reorderMarkerElement = this.notesLeaf.containerEl.createDiv('library-reorder-marker')
+        this.handleEvent(global, 'dragover', (event: DragEvent) => {
+            const parentRect = this.notesElement.getBoundingClientRect()
+            const receivingTopmostChild = document.elementFromPoint(parentRect.left + 1, event.clientY) as Element
+            const receivingElement = receivingTopmostChild.closest('.library-summary-container') as LibraryDivElement
+
+            // There might be some problems hiding here due to the gap caused by the border radius
+            if (!receivingElement || receivingElement == this.currentlyDragging) return
+
+            const receivingRect = receivingElement.getBoundingClientRect()
+            // Find the midpoint of the element and see if the mouse is above or below it
+            const isAbove = receivingRect.top + receivingRect.height / 2 > event.clientY
+
+            // If the mouse is above the midpoint, insert the marker above the element
+            this.reorderMarkerElement.addClass('dragging')
+            if (isAbove) {
+                this.notesElement.insertBefore(this.reorderMarkerElement, receivingElement)
+            } 
+            else {
+                this.notesElement.insertAfter(this.reorderMarkerElement, receivingElement)
+            }
+
+            // let folder = receivingElement.file.parent as TFolder
+            // let folderId = this.plugin.libraryData.ids[folder.path]
+            // let manualSortIndex = this.plugin.libraryData.manualSortIndices[folderId].notes
+            // let receivingId = this.plugin.libraryData.ids[receivingElement.file.path]
+
+            // let draggingId = this.plugin.libraryData.ids[this.currentlyDragging.file.path]
+
+
+
+            // manualSortIndex[draggingId] = manualSortIndex[receivingId] + (isAbove ? -0.5 : 0.5)
+
+            // this.populateNotes(folder)
+
+            // if (this.currentlyReceiving) this.currentlyReceiving.removeClass('receiving')
+            // container.addClass('receiving')
+            // this.currentlyReceiving = container
+            
+
+            // console.log(`isAbove: ${isAbove}; manualSortIndex[fileId]: ${manualSortIndex[receivingId]}`, receivingElement.file.name)
+        })
+        this.handleEvent(global, 'dragend', (event: DragEvent) => {
+            console.log('dragend', event)
+            instance.reorderMarkerElement.removeClass('dragging')
+
+            if (!instance.currentlyDragging) return
+            const currentlyDragging = instance.currentlyDragging as LibraryDivElement
+            const currentlyDraggingFolder = currentlyDragging.file.parent as TFolder
+            const currentlyDraggingFolderId = instance.plugin.libraryData.ids[currentlyDraggingFolder.path]
+            const currentlyDraggingFileId = instance.plugin.libraryData.ids[currentlyDragging.file.path]
+            const manualSortIndex = instance.plugin.libraryData.manualSortIndices[currentlyDraggingFolderId].notes
+
+
+            function getManualSortOrder(element: LibraryDivElement): number | null {
+                if (!element) return null
+                
+                const folder = element.file.parent as TFolder
+                const folderId = instance.plugin.libraryData.ids[folder.path]
+                const id = instance.plugin.libraryData.ids[element.file.path]
+                return manualSortIndex[id]
+            }
+
+            let previousManualSortOrder: number = 0, previousManualSortOrderCandidate = getManualSortOrder(instance.reorderMarkerElement.previousElementSibling as LibraryDivElement)
+            let nextManualSortOrder: number = 0, nextManualSortOrderCandidate = getManualSortOrder(instance.reorderMarkerElement.nextElementSibling as LibraryDivElement)
+
+            if (previousManualSortOrderCandidate === null && nextManualSortOrderCandidate !== null) {
+                previousManualSortOrder = nextManualSortOrderCandidate - 1
+                nextManualSortOrder = nextManualSortOrderCandidate
+            }
+            else if (nextManualSortOrderCandidate === null && previousManualSortOrderCandidate !== null) {
+                nextManualSortOrder = previousManualSortOrderCandidate + 1
+                previousManualSortOrder = previousManualSortOrderCandidate
+            }
+            else if (previousManualSortOrderCandidate === null && nextManualSortOrderCandidate === null) {
+                console.log('Something weird is going on with the manual sorting.')
+                return
+            }
+            else {
+                previousManualSortOrder = previousManualSortOrderCandidate as number
+                nextManualSortOrder = nextManualSortOrderCandidate as number
+            }
+
+            const newSortOrder = previousManualSortOrder + ((nextManualSortOrder - previousManualSortOrder) / 2)
+
+            manualSortIndex[currentlyDraggingFileId] = newSortOrder
+            instance.plugin.saveLibraryData()
+            instance.populateNotes(currentlyDraggingFolder)
+
+            instance.currentlyDragging = null
+        })
+
         // Add it all 
         this.contentEl.appendChild(this.split.containerEl)
         this.addChild(this.wrapper.view)  // This triggers the wrapped view's lifecycle to start
+    }
+
+    handleEvent(element: any, name: string, fn: Function) {
+        this.plugin.eventHandlers.push({
+            element: element,
+            name: name,
+            fn: fn
+        })
+        element.addEventListener(name, fn)
+    }
+
+    handleDragMove(el: Element) {
+
     }
 
     clearEl(el: Element) {
@@ -102,18 +221,37 @@ export class LibraryView extends ItemView {
             let frontmatter = this.app.metadataCache.getCache(file.path)?.frontmatter ?? {}
             let content = frontmatter.preview ? frontmatter.preview : await this.generatePreviewText(file)
             let title = frontmatter.title ?? file.basename
+
+            /// For debugging
+            const currentlyDraggingId = this.plugin.libraryData.ids[folder.path]
+            const manualSortIndex = this.plugin.libraryData.manualSortIndices[currentlyDraggingId].notes
+            // TODO: For some reason notes without a manual sort order are taking on the order of another note
+            //console.log(manualSortIndex)
+            const id = this.plugin.libraryData.ids[file.path]
+            const order = manualSortIndex[id]
+            title = `${title} (${order}, ${id})`
+            /////////////////////
+
             if (content.startsWith(title)) content = content.slice(title.length)
-            const container = notesElement.createDiv('library-summary-container nav-file-title')
+            const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
             const noteSummary = container.createDiv('library-summary')
-            noteSummary.createDiv({text: title, cls: 'title'})
+            noteSummary.createDiv({text: `${title} (${order}, ${id})`, cls: 'title'})
             noteSummary.createDiv({text: content, cls: 'content'})
 
-            noteSummary.onClickEvent(async event => {
+            container.onClickEvent(async event => {
                 if (activeNoteElement) activeNoteElement.removeClass('is-active')
                 activeNoteElement = container
                 activeNoteElement.addClass('is-active')
 
                 this.app.workspace.getLeaf().openFile(file);
+            })
+
+            container.file = file
+
+            this.plugin.app.dragManager.handleDrag(container, (event) => {
+                console.log('dragging', event)
+                this.plugin.app.dragManager.dragFile(event, file)
+                this.currentlyDragging = container
             })
         })
 

@@ -30,6 +30,14 @@ declare module 'obsidian' {
 
     export interface App {
         internalPlugins: InternalPlugins
+        dragManager: DragManager
+        containerEl: Element
+    }
+
+    export interface DragManager {
+        handleDrag(e: Element, handler: (e: DragEvent) => void): void
+        handleDrop(e: Element, handler: (e: DragEvent) => void): void
+        dragFile(event: DragEvent, file: TFile): void
     }
 
     export interface WorkspaceLeaf {
@@ -66,4 +74,8 @@ declare module 'obsidian' {
         collapseEl: HTMLDivElement;
         toggleCollapsed(yes: boolean): void;
     }
+    export interface LibraryDivElement extends HTMLDivElement {
+        file: TAbstractFile
+    }
 }
+
