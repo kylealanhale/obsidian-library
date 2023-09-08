@@ -75,7 +75,7 @@ declare module 'obsidian' {
         toggleCollapsed(yes: boolean): void;
     }
     export interface LibraryDivElement extends HTMLDivElement {
-        file: TAbstractFile
+        file: TFile
     }
 }
 

@@ -1,4 +1,4 @@
-import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
+import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY, EventHandler } from 'src/Views/LibraryView';
 import { SortSpec } from "src/SortSpec";
 
@@ -117,15 +117,33 @@ export default class LibraryPlugin extends Plugin {
 	async saveLibraryData() {
 		await this.saveData(this.libraryData);
 	}
-    async saveSortOrderForFolder(folder: TFolder, manualSortIndex: ManualSortIndex) {
-        this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes = manualSortIndex
+    async saveSortOrderForFolder(folder: TFolder, newManualSortIndex: ManualSortIndex) {
+        this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes = newManualSortIndex
 
         const spec = await this.getSortSpec(folder)
         if (!spec) return
-        spec.notes.items = Object.entries(manualSortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
+        spec.notes.items = Object.entries(newManualSortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
         await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
 
         await this.saveLibraryData()
+    }
+    getNotesSortIndex(folder: TFolder): ManualSortIndex {
+        return this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes
+    }
+    getId(item: TAbstractFile) {
+        return this.libraryData.ids[item.path]
+    }
+    getNoteSortOrder(file: TFile): number | null {
+        const parent = file.parent as TFolder
+        const parentId = this.getId(parent)
+        const fileId = this.getId(file)
+        return this.libraryData.manualSortIndices[parentId].notes[fileId]
+    }
+    setNoteSortOrder(file: TFile, order: number): void {
+        const parent = file.parent as TFolder
+        const parentId = this.getId(parent)
+        const fileId = this.getId(file)
+        this.libraryData.manualSortIndices[parentId].notes[fileId] = order
     }
 }
 

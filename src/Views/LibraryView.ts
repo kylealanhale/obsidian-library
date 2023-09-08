@@ -106,47 +106,44 @@ export class LibraryView extends ItemView {
             instance.reorderMarkerElement.removeClass('dragging')
 
             if (!instance.currentlyDragging) return
-            const currentlyDragging = instance.currentlyDragging as LibraryDivElement
-            const currentlyDraggingFolder = currentlyDragging.file.parent as TFolder
-            const currentlyDraggingFolderId = instance.plugin.libraryData.ids[currentlyDraggingFolder.path]
-            const currentlyDraggingFileId = instance.plugin.libraryData.ids[currentlyDragging.file.path]
-            const manualSortIndex = instance.plugin.libraryData.manualSortIndices[currentlyDraggingFolderId].notes
+            const currentFolder = instance.currentlyDragging.file.parent as TFolder
+            const newManualSortIndex = instance.plugin.getNotesSortIndex(currentFolder)
 
 
-            function getManualSortOrder(element: LibraryDivElement): number | null {
+            function getManualSortOrder(element: Element | null): number | null {
                 if (!element) return null
-                
-                const folder = element.file.parent as TFolder
-                const folderId = instance.plugin.libraryData.ids[folder.path]
-                const id = instance.plugin.libraryData.ids[element.file.path]
-                return manualSortIndex[id]
+                const libraryElement = element as LibraryDivElement
+                const id = instance.plugin.getId(libraryElement.file)
+                return newManualSortIndex[id]
             }
 
-            let previousManualSortOrder: number = 0, previousManualSortOrderCandidate = getManualSortOrder(instance.reorderMarkerElement.previousElementSibling as LibraryDivElement)
-            let nextManualSortOrder: number = 0, nextManualSortOrderCandidate = getManualSortOrder(instance.reorderMarkerElement.nextElementSibling as LibraryDivElement)
+            let previousManualSortOrder: number = 0, 
+                previousCandidate = getManualSortOrder(instance.reorderMarkerElement.previousElementSibling)
+            let nextManualSortOrder: number = 0, 
+                nextCandidate = getManualSortOrder(instance.reorderMarkerElement.nextElementSibling)
 
-            if (previousManualSortOrderCandidate === null && nextManualSortOrderCandidate !== null) {
-                previousManualSortOrder = nextManualSortOrderCandidate - 1
-                nextManualSortOrder = nextManualSortOrderCandidate
+            if (previousCandidate === null && nextCandidate !== null) {
+                previousManualSortOrder = nextCandidate - 1
+                nextManualSortOrder = nextCandidate
             }
-            else if (nextManualSortOrderCandidate === null && previousManualSortOrderCandidate !== null) {
-                nextManualSortOrder = previousManualSortOrderCandidate + 1
-                previousManualSortOrder = previousManualSortOrderCandidate
+            else if (nextCandidate === null && previousCandidate !== null) {
+                nextManualSortOrder = previousCandidate + 1
+                previousManualSortOrder = previousCandidate
             }
-            else if (previousManualSortOrderCandidate === null && nextManualSortOrderCandidate === null) {
+            else if (previousCandidate === null && nextCandidate === null) {
                 console.log('Something weird is going on with the manual sorting.')
                 return
             }
             else {
-                previousManualSortOrder = previousManualSortOrderCandidate as number
-                nextManualSortOrder = nextManualSortOrderCandidate as number
+                previousManualSortOrder = previousCandidate as number
+                nextManualSortOrder = nextCandidate as number
             }
 
             const newSortOrder = previousManualSortOrder + ((nextManualSortOrder - previousManualSortOrder) / 2)
 
-            manualSortIndex[currentlyDraggingFileId] = newSortOrder
-            instance.plugin.saveSortOrderForFolder(currentlyDraggingFolder, manualSortIndex)
-            instance.populateNotes(currentlyDraggingFolder)
+            instance.plugin.setNoteSortOrder(instance.currentlyDragging.file, newSortOrder)
+            instance.plugin.saveSortOrderForFolder(currentFolder, newManualSortIndex)
+            instance.populateNotes(currentFolder)
 
             instance.currentlyDragging = null
         })
