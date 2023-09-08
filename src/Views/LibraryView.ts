@@ -100,26 +100,6 @@ export class LibraryView extends ItemView {
             else {
                 this.notesElement.insertAfter(this.reorderMarkerElement, receivingElement)
             }
-
-            // let folder = receivingElement.file.parent as TFolder
-            // let folderId = this.plugin.libraryData.ids[folder.path]
-            // let manualSortIndex = this.plugin.libraryData.manualSortIndices[folderId].notes
-            // let receivingId = this.plugin.libraryData.ids[receivingElement.file.path]
-
-            // let draggingId = this.plugin.libraryData.ids[this.currentlyDragging.file.path]
-
-
-
-            // manualSortIndex[draggingId] = manualSortIndex[receivingId] + (isAbove ? -0.5 : 0.5)
-
-            // this.populateNotes(folder)
-
-            // if (this.currentlyReceiving) this.currentlyReceiving.removeClass('receiving')
-            // container.addClass('receiving')
-            // this.currentlyReceiving = container
-            
-
-            // console.log(`isAbove: ${isAbove}; manualSortIndex[fileId]: ${manualSortIndex[receivingId]}`, receivingElement.file.name)
         })
         this.handleEvent(global, 'dragend', (event: DragEvent) => {
             console.log('dragend', event)
@@ -165,7 +145,7 @@ export class LibraryView extends ItemView {
             const newSortOrder = previousManualSortOrder + ((nextManualSortOrder - previousManualSortOrder) / 2)
 
             manualSortIndex[currentlyDraggingFileId] = newSortOrder
-            instance.plugin.saveLibraryData()
+            instance.plugin.saveSortOrderForFolder(currentlyDraggingFolder, manualSortIndex)
             instance.populateNotes(currentlyDraggingFolder)
 
             instance.currentlyDragging = null

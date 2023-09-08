@@ -1,7 +1,6 @@
-import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFolder } from 'obsidian';
+import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY, EventHandler } from 'src/Views/LibraryView';
 import { SortSpec } from "src/SortSpec";
-import * as yaml from 'yaml'
 
 
 interface LibraryData {
@@ -85,7 +84,7 @@ export default class LibraryPlugin extends Plugin {
         let specPath = `${folder.path}/.obsidian-folder`
         if (!await folder.vault.adapter.exists(specPath)) { return null }
         const text = await folder.vault.adapter.read(specPath)
-        return yaml.parse(text) as SortSpec
+        return parseYaml(text) as SortSpec
     }
 
     async activateView() {  // Library
@@ -118,6 +117,16 @@ export default class LibraryPlugin extends Plugin {
 	async saveLibraryData() {
 		await this.saveData(this.libraryData);
 	}
+    async saveSortOrderForFolder(folder: TFolder, manualSortIndex: ManualSortIndex) {
+        this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes = manualSortIndex
+
+        const spec = await this.getSortSpec(folder)
+        if (!spec) return
+        spec.notes.items = Object.entries(manualSortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
+        await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
+
+        await this.saveLibraryData()
+    }
 }
 
 class SampleModal extends Modal {
