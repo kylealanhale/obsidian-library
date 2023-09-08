@@ -35,6 +35,7 @@ export class LibraryView extends ItemView {
         const instance = this
         this.plugin = plugin
         this.leaf = leaf
+        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
 
         this.icon = "library"
     }
@@ -51,7 +52,6 @@ export class LibraryView extends ItemView {
         const instance = this
 
         // Set it up
-        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
         this.contentEl.empty();
         this.contentEl.addClass('library')
 
@@ -226,7 +226,6 @@ export class LibraryView extends ItemView {
             container.file = file
 
             this.plugin.app.dragManager.handleDrag(container, (event) => {
-                console.log('dragging', event)
                 this.plugin.app.dragManager.dragFile(event, file)
                 this.currentlyDragging = container
             })

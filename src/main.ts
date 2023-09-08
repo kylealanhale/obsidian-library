@@ -33,11 +33,6 @@ export default class LibraryPlugin extends Plugin {
         console.log('*************************** Starting Library Plugin ***************************')
         await this.loadLibraryData()
 
-        this.registerView(
-            VIEW_TYPE_LIBRARY,
-            (leaf) => new LibraryView(leaf, this)
-        );
-
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
 
         this.activateView()
@@ -80,25 +75,6 @@ export default class LibraryPlugin extends Plugin {
         this.eventRefs.push(this.app.vault.on('delete', handleDelete))
     }
 
-    async getSortSpec(folder: TFolder): Promise<SortSpec | null> {
-        let specPath = `${folder.path}/.obsidian-folder`
-        if (!await folder.vault.adapter.exists(specPath)) { return null }
-        const text = await folder.vault.adapter.read(specPath)
-        return parseYaml(text) as SortSpec
-    }
-
-    async activateView() {  // Library
-        this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
-
-        const leaf = this.app.workspace.getLeftLeaf(false)
-        await leaf.setViewState({
-            type: VIEW_TYPE_LIBRARY,
-            active: true,
-        });
-
-        this.app.workspace.revealLeaf(leaf);
-    } 
-
     onunload() {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
         this.eventRefs.forEach((ref) => {
@@ -109,6 +85,24 @@ export default class LibraryPlugin extends Plugin {
         })
         this.saveLibraryData();
     }
+
+    async activateView() {  // Library
+        this.app.workspace.onLayoutReady(async () => {
+            this.registerView(
+                VIEW_TYPE_LIBRARY,
+                (leaf) => {
+                    return new LibraryView(leaf, this)
+                }
+            );    
+            this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
+            const leaf = this.app.workspace.getLeftLeaf(false)
+            await leaf.setViewState({
+                type: VIEW_TYPE_LIBRARY,
+                active: true,
+            });
+            this.app.workspace.revealLeaf(leaf);
+        })
+    } 
 
 	async loadLibraryData() {
 		this.libraryData = Object.assign({}, DEFAULT_CACHE, await this.loadData());
@@ -127,6 +121,15 @@ export default class LibraryPlugin extends Plugin {
 
         await this.saveLibraryData()
     }
+
+    // Helpers
+    async getSortSpec(folder: TFolder): Promise<SortSpec | null> {
+        let specPath = `${folder.path}/.obsidian-folder`
+        if (!await folder.vault.adapter.exists(specPath)) { return null }
+        const text = await folder.vault.adapter.read(specPath)
+        return parseYaml(text) as SortSpec
+    }
+
     getNotesSortIndex(folder: TFolder): ManualSortIndex {
         return this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes
     }
@@ -195,5 +198,3 @@ class LibrarySettingsTab extends PluginSettingTab {
 // To do:
 // * Update notes list when new note is created, deleted, or moved
 // * Add sorting options to notes list
-// * Fix errors in console
-// * Allow user to drag notes to reorder them
