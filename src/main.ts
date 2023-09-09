@@ -1,20 +1,21 @@
-import { App, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
+import { App, EventRef, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY, EventHandler } from 'src/Views/LibraryView';
 import { SortSpec } from "src/SortSpec";
+import { v4 as uuid } from 'uuid';
 
 
 interface LibraryData {
     ids: { [key: string]: string }
-    manualSortIndices: { [key: string]: { [key in 'notes' | 'folders']: ManualSortIndex } }
+    sortIndices: { [key: string]: { [key in 'notes' | 'folders']: SortIndex } }
     settings: LibrarySettings
 }
-interface ManualSortIndex {
+interface SortIndex {
     [key: string]: number
 }
 
 const DEFAULT_CACHE: LibraryData = {
     ids: {},
-    manualSortIndices: {},
+    sortIndices: {},
     settings: {
         currentPath: '/'
     },
@@ -25,9 +26,10 @@ interface LibrarySettings {
 }
 
 export default class LibraryPlugin extends Plugin {
-    libraryData: LibraryData
-    eventRefs: any[] = []
-    eventHandlers: EventHandler[] = []
+    data: LibraryData
+    metadataEvents: EventRef[] = []
+    vaultEvents: EventRef[] = []
+    events: EventHandler[] = []
 
     async onload() {
         console.log('*************************** Starting Library Plugin ***************************')
@@ -35,118 +37,123 @@ export default class LibraryPlugin extends Plugin {
 
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
 
-        this.activateView()
+        this.app.workspace.onLayoutReady(async () => {
+            this.activateView()
+        })
 
-        this.eventRefs.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
+        this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
+            // Get ID from frontmatter; if it's there, store it to the cache
             const id = metadata.frontmatter?.uid
             if (id) {
-                this.libraryData.ids[file.path] = id
+                this.data.ids[file.path] = id
             }
 
-            if (file.parent && this.libraryData.ids[file.parent.path]) { return }
+            // If the parent folder has already been processed, skip it
+            if (file.parent && this.data.ids[file.parent.path]) { return }
             const parent = file.parent as TFolder
 
+            // Store the folder ID in the cache
             let spec = await this.getSortSpec(parent)
-            if (!spec) { return }
-            this.libraryData.ids[parent.path] = spec.id
+            this.data.ids[parent.path] = spec.id
 
-            // Cache manual sort index
-            let manualSortIndex = {folders: {} as ManualSortIndex, notes: {} as ManualSortIndex}
-            this.libraryData.manualSortIndices[spec.id] = manualSortIndex
+            // Cache sort index
+            let sortIndices = {folders: {} as SortIndex, notes: {} as SortIndex}
+            this.data.sortIndices[spec.id] = sortIndices
             spec.folders.items.forEach((item, index) => {
-                manualSortIndex.folders[item] = index
+                sortIndices.folders[item] = index
             })
             spec.notes.items.forEach((item, index) => {
-                manualSortIndex.notes[item] = index
+                sortIndices.notes[item] = index
             })
+
+            // Write all of that to disk
             this.saveLibraryData()
         }))
-
-        function handleDelete(abstractFile: TAbstractFile, movedFromPath: string | void) {
-            if (movedFromPath) {
-                console.log('moved from:', movedFromPath)
-            }
-            else {
-                console.log('deleted:', abstractFile.path)
-            }
-        }
-
-        this.eventRefs.push(this.app.vault.on('rename', handleDelete))
-        this.eventRefs.push(this.app.vault.on('delete', handleDelete))
     }
 
     onunload() {
         this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
-        this.eventRefs.forEach((ref) => {
+        this.metadataEvents.forEach((ref) => {
             this.app.metadataCache.offref(ref);
         })
-        this.eventHandlers.forEach((handler) => {
+        this.vaultEvents.forEach((ref) => {
+            this.app.vault.offref(ref);
+        })
+        this.events.forEach((handler) => {
             handler.element.removeEventListener(handler.name, handler.fn)
         })
         this.saveLibraryData();
     }
 
-    async activateView() {  // Library
-        this.app.workspace.onLayoutReady(async () => {
-            this.registerView(
-                VIEW_TYPE_LIBRARY,
-                (leaf) => {
-                    return new LibraryView(leaf, this)
-                }
-            );    
-            this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
-            const leaf = this.app.workspace.getLeftLeaf(false)
-            await leaf.setViewState({
-                type: VIEW_TYPE_LIBRARY,
-                active: true,
-            });
-            this.app.workspace.revealLeaf(leaf);
-        })
+    async activateView() {
+        // For some reason this all gets called twice, but it doesn't seem to cause any problems.
+        this.registerView(
+            VIEW_TYPE_LIBRARY,
+            (leaf) => {
+                return new LibraryView(leaf, this)
+            }
+        );    
+        this.app.workspace.detachLeavesOfType(VIEW_TYPE_LIBRARY);
+        const leaf = this.app.workspace.getLeftLeaf(false)
+        await leaf.setViewState({
+            type: VIEW_TYPE_LIBRARY,
+            active: true,
+        });
+        this.app.workspace.revealLeaf(leaf);
     } 
 
 	async loadLibraryData() {
-		this.libraryData = Object.assign({}, DEFAULT_CACHE, await this.loadData());
+		this.data = Object.assign({}, DEFAULT_CACHE, await this.loadData());
 	}
 
 	async saveLibraryData() {
-		await this.saveData(this.libraryData);
+		await this.saveData(this.data);
 	}
-    async saveSortOrderForFolder(folder: TFolder, newManualSortIndex: ManualSortIndex) {
-        this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes = newManualSortIndex
-
-        const spec = await this.getSortSpec(folder)
-        if (!spec) return
-        spec.notes.items = Object.entries(newManualSortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
-        await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
-
-        await this.saveLibraryData()
-    }
 
     // Helpers
-    async getSortSpec(folder: TFolder): Promise<SortSpec | null> {
+    async getSortSpec(folder: TFolder): Promise<SortSpec> {
         let specPath = `${folder.path}/.obsidian-folder`
-        if (!await folder.vault.adapter.exists(specPath)) { return null }
+        if (!await folder.vault.adapter.exists(specPath)) {
+            // Create empty spec if it doesn't exist
+            const spec: SortSpec = {
+                id: uuid(),
+                folders: { sort: 'title', direction: 'ascending', items: [] },
+                notes: { sort: 'title', direction: 'ascending', items: [] }
+            }
+            await folder.vault.adapter.write(specPath, stringifyYaml(spec))
+            return spec
+        }
         const text = await folder.vault.adapter.read(specPath)
         return parseYaml(text) as SortSpec
     }
 
-    getNotesSortIndex(folder: TFolder): ManualSortIndex {
-        return this.libraryData.manualSortIndices[this.libraryData.ids[folder.path]].notes
+    // Gets the sort index for the given folder from the cache
+    getCachedNotesSortIndex(folder: TFolder): SortIndex {
+        return this.data.sortIndices[this.data.ids[folder.path]].notes
+    }
+    // The opposite of the above; stores to cache and disk
+    async persistNotesSortIndex(folder: TFolder, sortIndex: SortIndex) {
+        this.data.sortIndices[this.data.ids[folder.path]].notes = sortIndex
+
+        const spec = await this.getSortSpec(folder)
+        spec.notes.items = Object.entries(sortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
+        await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
+        await this.saveLibraryData()
     }
     getId(item: TAbstractFile) {
-        return this.libraryData.ids[item.path]
+        return this.data.ids[item.path]
     }
     getNoteSortOrder(file: TFile): number | null {
         const parent = file.parent as TFolder
         const parentId = this.getId(parent)
         const fileId = this.getId(file)
-        return this.libraryData.manualSortIndices[parentId].notes[fileId]
+        return this.data.sortIndices[parentId].notes[fileId]
     }
     setNoteSortOrder(file: TFile, order: number): void {
         const parent = file.parent as TFolder
         const parentId = this.getId(parent)
         const fileId = this.getId(file)
-        this.libraryData.manualSortIndices[parentId].notes[fileId] = order
+        this.data.sortIndices[parentId].notes[fileId] = order
     }
 }
 
@@ -186,15 +193,19 @@ class LibrarySettingsTab extends PluginSettingTab {
             .setDesc('It\'s a secret')
             .addText(text => text
                 .setPlaceholder('Enter your secret')
-                .setValue(this.plugin.libraryData.settings.currentPath)
+                .setValue(this.plugin.data.settings.currentPath)
                 .onChange(async (value) => {
                     console.log('Secret: ' + value);
-                    this.plugin.libraryData.settings.currentPath = value;
+                    this.plugin.data.settings.currentPath = value;
                     await this.plugin.saveLibraryData();
                 }));
     }
 }
 
-// To do:
-// * Update notes list when new note is created, deleted, or moved
-// * Add sorting options to notes list
+/**
+ * TODO:
+ * Update notes list when new note is created, deleted, or moved
+ * Add sorting options to notes list
+ * Undo/redo
+ * Handle scenario of previously un-sorted notes (create them when expected and not found)
+ */

@@ -102,47 +102,46 @@ export class LibraryView extends ItemView {
             }
         })
         this.handleEvent(global, 'dragend', (event: DragEvent) => {
-            console.log('dragend', event)
             instance.reorderMarkerElement.removeClass('dragging')
 
             if (!instance.currentlyDragging) return
             const currentFolder = instance.currentlyDragging.file.parent as TFolder
-            const newManualSortIndex = instance.plugin.getNotesSortIndex(currentFolder)
+            const newSortIndex = instance.plugin.getCachedNotesSortIndex(currentFolder)
 
 
-            function getManualSortOrder(element: Element | null): number | null {
+            function getSortOrder(element: Element | null): number | null {
                 if (!element) return null
                 const libraryElement = element as LibraryDivElement
                 const id = instance.plugin.getId(libraryElement.file)
-                return newManualSortIndex[id]
+                return newSortIndex[id]
             }
 
-            let previousManualSortOrder: number = 0, 
-                previousCandidate = getManualSortOrder(instance.reorderMarkerElement.previousElementSibling)
-            let nextManualSortOrder: number = 0, 
-                nextCandidate = getManualSortOrder(instance.reorderMarkerElement.nextElementSibling)
+            let previousSortOrder: number = 0, 
+                previousCandidateSortOrder = getSortOrder(instance.reorderMarkerElement.previousElementSibling)
+            let nextSortOrder: number = 0, 
+                nextCandidateSortOrder = getSortOrder(instance.reorderMarkerElement.nextElementSibling)
 
-            if (previousCandidate === null && nextCandidate !== null) {
-                previousManualSortOrder = nextCandidate - 1
-                nextManualSortOrder = nextCandidate
+            if (previousCandidateSortOrder === null && nextCandidateSortOrder !== null) {
+                previousSortOrder = nextCandidateSortOrder - 1
+                nextSortOrder = nextCandidateSortOrder
             }
-            else if (nextCandidate === null && previousCandidate !== null) {
-                nextManualSortOrder = previousCandidate + 1
-                previousManualSortOrder = previousCandidate
+            else if (nextCandidateSortOrder === null && previousCandidateSortOrder !== null) {
+                nextSortOrder = previousCandidateSortOrder + 1
+                previousSortOrder = previousCandidateSortOrder
             }
-            else if (previousCandidate === null && nextCandidate === null) {
+            else if (previousCandidateSortOrder === null && nextCandidateSortOrder === null) {
                 console.log('Something weird is going on with the manual sorting.')
                 return
             }
             else {
-                previousManualSortOrder = previousCandidate as number
-                nextManualSortOrder = nextCandidate as number
+                previousSortOrder = previousCandidateSortOrder as number
+                nextSortOrder = nextCandidateSortOrder as number
             }
 
-            const newSortOrder = previousManualSortOrder + ((nextManualSortOrder - previousManualSortOrder) / 2)
+            const newSortOrder = previousSortOrder + ((nextSortOrder - previousSortOrder) / 2)
 
             instance.plugin.setNoteSortOrder(instance.currentlyDragging.file, newSortOrder)
-            instance.plugin.saveSortOrderForFolder(currentFolder, newManualSortIndex)
+            instance.plugin.persistNotesSortIndex(currentFolder, newSortIndex)
             instance.populateNotes(currentFolder)
 
             instance.currentlyDragging = null
@@ -154,7 +153,7 @@ export class LibraryView extends ItemView {
     }
 
     handleEvent(element: any, name: string, fn: Function) {
-        this.plugin.eventHandlers.push({
+        this.plugin.events.push({
             element: element,
             name: name,
             fn: fn
@@ -178,12 +177,12 @@ export class LibraryView extends ItemView {
         let hasNotes = false
 
         let children = Array.from(folder.children)
-        let id = this.plugin.libraryData.ids[folder.path]
+        let id = this.plugin.data.ids[folder.path]
         if (id) {
-            let manualSortIndex = this.plugin.libraryData.manualSortIndices[id].notes
+            let manualSortIndex = this.plugin.data.sortIndices[id].notes
             children.sort((first, second) => {
-                let firstId = this.plugin.libraryData.ids[first.path], firstIndex = manualSortIndex[firstId] ?? Number.MAX_VALUE
-                let secondId = this.plugin.libraryData.ids[second.path], secondIndex = manualSortIndex[secondId] ?? Number.MAX_VALUE
+                let firstId = this.plugin.data.ids[first.path], firstIndex = manualSortIndex[firstId] ?? Number.MAX_VALUE
+                let secondId = this.plugin.data.ids[second.path], secondIndex = manualSortIndex[secondId] ?? Number.MAX_VALUE
                 return firstIndex - secondIndex
             })
         }
@@ -199,20 +198,10 @@ export class LibraryView extends ItemView {
             let content = frontmatter.preview ? frontmatter.preview : await this.generatePreviewText(file)
             let title = frontmatter.title ?? file.basename
 
-            /// For debugging
-            const currentlyDraggingId = this.plugin.libraryData.ids[folder.path]
-            const manualSortIndex = this.plugin.libraryData.manualSortIndices[currentlyDraggingId].notes
-            // TODO: For some reason notes without a manual sort order are taking on the order of another note
-            //console.log(manualSortIndex)
-            const id = this.plugin.libraryData.ids[file.path]
-            const order = manualSortIndex[id]
-            title = `${title} (${order}, ${id})`
-            /////////////////////
-
             if (content.startsWith(title)) content = content.slice(title.length)
             const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
             const noteSummary = container.createDiv('library-summary')
-            noteSummary.createDiv({text: `${title} (${order}, ${id})`, cls: 'title'})
+            noteSummary.createDiv({text: title, cls: 'title'})
             noteSummary.createDiv({text: content, cls: 'content'})
 
             container.onClickEvent(async event => {

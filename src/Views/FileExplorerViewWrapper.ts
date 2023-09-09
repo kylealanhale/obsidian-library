@@ -9,7 +9,7 @@ export class FileExplorerWrapper {
     clickHandler: ClickHandler
     view: FileExplorerView
     fileExplorerPlugin: FileExplorerPlugin
-    libraryPlugin: LibraryPlugin
+    plugin: LibraryPlugin
     selectedEl: HTMLDivElement
 
     constructor(leaf: WorkspaceLeaf, libraryPlugin: LibraryPlugin, clickHandler: ClickHandler) {
@@ -18,7 +18,7 @@ export class FileExplorerWrapper {
         const FileExplorerViewConstructor = explorerDetails.views['file-explorer'] as typeof FileExplorerView
 
         this.view = new FileExplorerViewConstructor(leaf)
-        this.libraryPlugin = libraryPlugin
+        this.plugin = libraryPlugin
         this.clickHandler = clickHandler
 
         // First the FileExplorerView view gets loaded, part of which is...
@@ -37,7 +37,7 @@ export class FileExplorerWrapper {
     }
     isNavigable(file: TAbstractFile) : boolean {
         if (file instanceof TFile) return false;
-        const attachmentsPath = this.libraryPlugin.app.vault.getConfig("attachmentFolderPath").slice(2)
+        const attachmentsPath = this.plugin.app.vault.getConfig("attachmentFolderPath").slice(2)
         if (file.name == attachmentsPath) return false;
         return true
     }
@@ -84,7 +84,7 @@ export class FileExplorerWrapper {
             // Let the parent view handle clicks
             navFolder.selfEl.addEventListener('click', (event: Event) => {
                 instance.setActiveEl(navFolder.selfEl)
-                instance.libraryPlugin.libraryData.settings.currentPath = folder.path
+                instance.plugin.data.settings.currentPath = folder.path
                 instance.clickHandler(folder)
             })
 
@@ -99,11 +99,11 @@ export class FileExplorerWrapper {
     }
 
     revealCurrentPath() {
-        let abstractFile = this.fileExplorerPlugin.app.vault.getAbstractFileByPath(this.libraryPlugin.libraryData.settings.currentPath)
+        let abstractFile = this.fileExplorerPlugin.app.vault.getAbstractFileByPath(this.plugin.data.settings.currentPath)
         let folder = abstractFile instanceof TFile ? (abstractFile as TFile).parent as TFolder : abstractFile as TFolder
         if (folder instanceof TFile) folder = (folder as TFile).parent as TFolder
         let navItem = this.view.fileItems[folder.path]
-        this.libraryPlugin.loadLibraryData()
+        this.plugin.loadLibraryData()
         this.view.sort()
 
         this.view.revealInFolder(folder)
