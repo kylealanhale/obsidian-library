@@ -3,7 +3,7 @@ export type SortDefinition = {
     direction: 'ascending' | 'descending'
     items: string[]
 }
-export interface SortSpec {
+export interface ObsidianFolderSpec {
     id: string
     folders: SortDefinition
     notes: SortDefinition

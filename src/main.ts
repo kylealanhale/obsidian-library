@@ -1,6 +1,6 @@
-import { App, EventRef, Modal, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
+import { App, EventRef, Modal, Notice, Plugin, PluginSettingTab, Setting, TAbstractFile, TFile, TFolder, parseYaml, stringifyYaml } from 'obsidian';
 import { LibraryView, VIEW_TYPE_LIBRARY, EventHandler } from 'src/Views/LibraryView';
-import { SortSpec } from "src/SortSpec";
+import { ObsidianFolderSpec as ObsidianFolderSpec } from "src/ObsidianFolderSpec";
 import { v4 as uuid } from 'uuid';
 
 
@@ -20,6 +20,9 @@ const DEFAULT_CACHE: LibraryData = {
         currentPath: '/'
     },
 }
+TFile.prototype.getParent = function(): TFolder {
+    return this.parent ?? this.vault.getRoot() as TFolder
+}
 
 interface LibrarySettings {
 	currentPath: string;
@@ -30,6 +33,36 @@ export default class LibraryPlugin extends Plugin {
     metadataEvents: EventRef[] = []
     vaultEvents: EventRef[] = []
     events: EventHandler[] = []
+    updateHandler: Function | null = null
+
+    /**
+     * Caches file ID to memory; has side effects of updating front matter
+     * in md file and sort order in .obsidian-folder file.
+     * @param file File to cache
+     */
+    async cacheFileToMemory(file: TFile) {
+        // Store the file ID in the cache
+        if (!this.data.ids[file.path]) {
+            // Add file to cache
+            const id = await this.getOrCreateFileId(file)
+            this.data.ids[file.path] = id
+        } 
+    }
+    async cacheFolderToMemory(folder: TFolder) {
+        // Store the folder ID in the cache
+        let spec = await this.getOrCreateFolderSpec(folder)
+        this.data.ids[folder.path] = spec.id
+
+        // Cache sort index
+        let sortIndices = {folders: {} as SortIndex, notes: {} as SortIndex}
+        this.data.sortIndices[spec.id] = sortIndices
+        spec.folders.items.forEach((item, index) => {
+            sortIndices.folders[item] = index
+        })
+        spec.notes.items.forEach((item, index) => {
+            sortIndices.notes[item] = index
+        })
+    }
 
     async onload() {
         console.log('*************************** Starting Library Plugin ***************************')
@@ -42,33 +75,104 @@ export default class LibraryPlugin extends Plugin {
         })
 
         this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
-            // Get ID from frontmatter; if it's there, store it to the cache
-            const id = metadata.frontmatter?.uid
-            if (id) {
-                this.data.ids[file.path] = id
-            }
+            console.log('metadata changed:', file, metadata)
+            
+            this.cacheFileToMemory(file as TFile)
 
-            // If the parent folder has already been processed, skip it
-            if (file.parent && this.data.ids[file.parent.path]) { return }
-            const parent = file.parent as TFolder
+            // Cache parent folder if it hasn't been
+            if (file.getParent() && this.data.ids[file.getParent().path]) { return }
+            await this.cacheFolderToMemory(file.getParent())
 
-            // Store the folder ID in the cache
-            let spec = await this.getSortSpec(parent)
-            this.data.ids[parent.path] = spec.id
-
-            // Cache sort index
-            let sortIndices = {folders: {} as SortIndex, notes: {} as SortIndex}
-            this.data.sortIndices[spec.id] = sortIndices
-            spec.folders.items.forEach((item, index) => {
-                sortIndices.folders[item] = index
-            })
-            spec.notes.items.forEach((item, index) => {
-                sortIndices.notes[item] = index
-            })
-
-            // Write all of that to disk
             this.saveLibraryData()
         }))
+
+        let createNotice = new Notice('create...', 10000000);
+        this.vaultEvents.push(this.app.vault.on('create', async (file) => {
+            createNotice.setMessage(`create: ${file.path}`)
+            if (!(file instanceof TFile)) { return }
+
+            let id = uuid()
+            await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+                frontMatter.uid = id
+            })
+            let spec = await this.getOrCreateFolderSpec(file.getParent())
+            spec.notes.items.push(id)
+            this.saveFolderSpec(file.getParent(), spec)
+
+            this.cacheFileToMemory(file)
+            this.cacheFolderToMemory(file.getParent())
+            this.saveLibraryData()
+
+            if (this.updateHandler) this.updateHandler(file.getParent())
+
+            /**
+             * Order:
+             * - Write ID to front matter
+             * - Write ID to folder spec (side effect: creates if not present)
+             * - Make sure folder gets processed (it short circuits above)
+             * - Process to cache (make sure folder gets re-processed)
+             */            
+        }))
+        // let modifyNotice = new Notice('modify...', 10000000);
+        // this.vaultEvents.push(this.app.vault.on('modify', async (file) => {
+        //     modifyNotice.setMessage(`modify: ${file.path}`)
+        //     if (!(file instanceof TFile)) { return }
+
+        //     // Check to see if metadataCache's copy of the front matter is different and if so to revert it
+        //     const id = this.data.ids[file.path]
+        //     const frontMatter = this.app.metadataCache.getCache(file.path)?.frontmatter
+        //     if (frontMatter?.uid != id) {
+        //         await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+        //             frontMatter.uid = id
+        //         })
+        //     }
+
+        //     if (this.updateHandler) this.updateHandler(file.getParent())
+        // }))
+        let renameNotice = new Notice('rename...', 10000000);
+        this.vaultEvents.push(this.app.vault.on('rename', (file, oldPath) => {
+            renameNotice.setMessage(`rename: ${file.path} from ${oldPath}`)
+            if (!(file instanceof TFile)) { return }
+
+            let id = this.data.ids[oldPath]
+            delete this.data.ids[oldPath]
+            this.data.ids[file.path] = id
+            this.saveLibraryData()
+
+            if (this.updateHandler) this.updateHandler(file.getParent())
+        }))
+        let deleteNotice = new Notice('delete...', 10000000);
+        this.vaultEvents.push(this.app.vault.on('delete', async (file) => {
+            deleteNotice.setMessage(`delete: ${file.path}`)
+            if (!(file instanceof TFile)) { return }
+
+            let id = this.data.ids[file.path]
+            delete this.data.ids[file.path]
+            this.saveLibraryData()
+
+            let spec = await this.getOrCreateFolderSpec(file.getParent())
+            spec.notes.items.remove(id)
+            this.saveFolderSpec(file.getParent(), spec)
+
+            if (this.updateHandler) this.updateHandler(file.getParent())
+        }))
+    }
+    async getOrCreateFileId(file: TFile): Promise<string> {
+        let id: string = ""
+        await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
+            console.log('processing frontmatter:', frontMatter)
+            if (frontMatter.uid) id = frontMatter.uid
+            else {
+                id = uuid()
+                frontMatter.uid = id
+                // Store id to folder sort spec
+            }
+        })
+        return id
+    }
+
+    handleUpdates(handler: Function) {
+        this.updateHandler = handler
     }
 
     onunload() {
@@ -111,11 +215,11 @@ export default class LibraryPlugin extends Plugin {
 	}
 
     // Helpers
-    async getSortSpec(folder: TFolder): Promise<SortSpec> {
+    async getOrCreateFolderSpec(folder: TFolder): Promise<ObsidianFolderSpec> {
         let specPath = `${folder.path}/.obsidian-folder`
         if (!await folder.vault.adapter.exists(specPath)) {
             // Create empty spec if it doesn't exist
-            const spec: SortSpec = {
+            const spec: ObsidianFolderSpec = {
                 id: uuid(),
                 folders: { sort: 'title', direction: 'ascending', items: [] },
                 notes: { sort: 'title', direction: 'ascending', items: [] }
@@ -124,33 +228,38 @@ export default class LibraryPlugin extends Plugin {
             return spec
         }
         const text = await folder.vault.adapter.read(specPath)
-        return parseYaml(text) as SortSpec
+        return parseYaml(text) as ObsidianFolderSpec
+    }
+    async saveFolderSpec(folder: TFolder, spec: ObsidianFolderSpec) {
+        await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
     }
 
-    // Gets the sort index for the given folder from the cache
+    // Gets the sort index for the given folder from the cache. Used
+    // when manually reordering.
     getCachedNotesSortIndex(folder: TFolder): SortIndex {
         return this.data.sortIndices[this.data.ids[folder.path]].notes
     }
-    // The opposite of the above; stores to cache and disk
+    // The opposite of the above; stores to cache and disk. Used
+    // to persist manual reordering.
     async persistNotesSortIndex(folder: TFolder, sortIndex: SortIndex) {
         this.data.sortIndices[this.data.ids[folder.path]].notes = sortIndex
 
-        const spec = await this.getSortSpec(folder)
+        const spec = await this.getOrCreateFolderSpec(folder)
         spec.notes.items = Object.entries(sortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
-        await folder.vault.adapter.write(`${folder.path}/.obsidian-folder`, stringifyYaml(spec))
+        this.saveFolderSpec(folder, spec)
         await this.saveLibraryData()
     }
     getId(item: TAbstractFile) {
         return this.data.ids[item.path]
     }
     getNoteSortOrder(file: TFile): number | null {
-        const parent = file.parent as TFolder
+        const parent = file.getParent()
         const parentId = this.getId(parent)
         const fileId = this.getId(file)
         return this.data.sortIndices[parentId].notes[fileId]
     }
     setNoteSortOrder(file: TFile, order: number): void {
-        const parent = file.parent as TFolder
+        const parent = file.getParent()
         const parentId = this.getId(parent)
         const fileId = this.getId(file)
         this.data.sortIndices[parentId].notes[fileId] = order
@@ -204,8 +313,21 @@ class LibrarySettingsTab extends PluginSettingTab {
 
 /**
  * TODO:
- * Update notes list when new note is created, deleted, or moved
- * Add sorting options to notes list
- * Undo/redo
- * Handle scenario of previously un-sorted notes (create them when expected and not found)
+ * - Update notes list when new note is created, deleted, or moved
+ * - Add sorting options to notes list
+ * - Undo/redo
+ * - Handle scenario of previously un-sorted notes (create them when expected and not found)
+ * - So many bugs now... deleting is stalling the whole damned thing, and dragging to
+ *   reorder newly created notes isn't great. Tech debt babyyyyyy
+ * - fix damage done to uids in 4a976d52c.. I can probably check for all the created files,
+ *   set those aside, and revert the rest, after some checking and obvious knowns like lyric
+ *   sheets. And no more dev without content checkpoints.
+ */
+
+/**
+ * Library data points for a file:
+ * - file id on disk (front matter)
+ * - file sort order on disk (.obsidian-folder)
+ * - file id in cache, memory and disk (plugin.data; ./data.json)
+ * - folder sort orders in cache, memory and disk (plugin.data; ./data.json)
  */

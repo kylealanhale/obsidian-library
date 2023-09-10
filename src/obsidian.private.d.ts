@@ -49,10 +49,6 @@ declare module 'obsidian' {
         insertChild(index: number, leaf: WorkspaceLeaf): void
     }
 
-    export interface Plugin {
-        views: { [key: string] : any }
-    }
-
     export interface Vault {
         getConfig(name: string): any;
     }
@@ -76,6 +72,9 @@ declare module 'obsidian' {
     }
     export interface LibraryDivElement extends HTMLDivElement {
         file: TFile
+    }
+    export interface TFile {
+        getParent(): TFolder
     }
 }
 

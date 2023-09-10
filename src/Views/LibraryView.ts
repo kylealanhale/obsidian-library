@@ -32,10 +32,10 @@ export class LibraryView extends ItemView {
 
     constructor(leaf: WorkspaceLeaf, plugin: LibraryPlugin) {
         super(leaf);
-        const instance = this
         this.plugin = plugin
         this.leaf = leaf
         this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
+        this.plugin.handleUpdates(this.populateNotes.bind(this))
 
         this.icon = "library"
     }
@@ -105,7 +105,7 @@ export class LibraryView extends ItemView {
             instance.reorderMarkerElement.removeClass('dragging')
 
             if (!instance.currentlyDragging) return
-            const currentFolder = instance.currentlyDragging.file.parent as TFolder
+            const currentFolder = instance.currentlyDragging.file.getParent()
             const newSortIndex = instance.plugin.getCachedNotesSortIndex(currentFolder)
 
 
@@ -161,10 +161,6 @@ export class LibraryView extends ItemView {
         element.addEventListener(name, fn)
     }
 
-    handleDragMove(el: Element) {
-
-    }
-
     clearEl(el: Element) {
         const empties = el.querySelectorAll('.workspace-leaf-content:not([data-type="workspace-leaf-resize-handle"])')
         empties.forEach(empty => empty.parentNode?.removeChild(empty))
@@ -179,10 +175,10 @@ export class LibraryView extends ItemView {
         let children = Array.from(folder.children)
         let id = this.plugin.data.ids[folder.path]
         if (id) {
-            let manualSortIndex = this.plugin.data.sortIndices[id].notes
+            let sortIndex = this.plugin.data.sortIndices[id].notes
             children.sort((first, second) => {
-                let firstId = this.plugin.data.ids[first.path], firstIndex = manualSortIndex[firstId] ?? Number.MAX_VALUE
-                let secondId = this.plugin.data.ids[second.path], secondIndex = manualSortIndex[secondId] ?? Number.MAX_VALUE
+                let firstId = this.plugin.data.ids[first.path], firstIndex = sortIndex[firstId] ?? Number.MAX_VALUE
+                let secondId = this.plugin.data.ids[second.path], secondIndex = sortIndex[secondId] ?? Number.MAX_VALUE
                 return firstIndex - secondIndex
             })
         }
