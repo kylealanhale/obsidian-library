@@ -113,8 +113,7 @@ export class LibraryView extends ItemView {
 
             function getSortOrder(element: Element | null): number | null {
                 if (!element) return null
-                const libraryElement = element as LibraryDivElement
-                return newSortIndex[libraryElement.file.path]
+                return newSortIndex[(element as LibraryDivElement).file.name]
             }
 
             let previousSortOrder: number = 0, 
@@ -140,6 +139,7 @@ export class LibraryView extends ItemView {
             }
 
             const newSortOrder = previousSortOrder + ((nextSortOrder - previousSortOrder) / 2)
+            console.log(`sort order: ${previousSortOrder} + ((${nextSortOrder} - ${previousSortOrder}) / 2) = ${newSortOrder}`)
 
             instance.plugin.setNoteSortOrder(instance.currentlyDragging.file, newSortOrder)
             instance.plugin.persistNotesSortIndex(currentFolder, newSortIndex)
@@ -177,7 +177,7 @@ export class LibraryView extends ItemView {
             .sort((first, second) => {
                 if (!this.plugin.data.sortCache[folder.path]) return 0
                 let sortIndex = this.plugin.data.sortCache[folder.path].notes
-                return sortIndex[first.path] - sortIndex[second.path]
+                return sortIndex[first.name] - sortIndex[second.name]
             })
             .forEach(async child => {
                 if (!(child instanceof TFile)) return;

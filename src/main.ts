@@ -251,10 +251,10 @@ export default class LibraryPlugin extends Plugin {
         await this.saveLibraryData()
     }
     getNoteSortOrder(file: TFile): number | null {
-        return this.data.sortCache[file.getParent().path].notes[file.path]
+        return this.data.sortCache[file.getParent().path].notes[file.name]
     }
     setNoteSortOrder(file: TFile, order: number): void {
-        this.data.sortCache[file.getParent().path].notes[file.path] = order
+        this.data.sortCache[file.getParent().path].notes[file.name] = order
     }
 }
 
