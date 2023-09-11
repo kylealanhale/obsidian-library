@@ -55,6 +55,8 @@ export class LibraryView extends ItemView {
         this.contentEl.empty();
         this.contentEl.addClass('library')
 
+        console.log('LibraryView opened')
+
         // Set up split
         // @ts-ignore
         this.split = new WorkspaceSplit(this.app.workspace, 'vertical')
@@ -106,14 +108,13 @@ export class LibraryView extends ItemView {
 
             if (!instance.currentlyDragging) return
             const currentFolder = instance.currentlyDragging.file.getParent()
-            const newSortIndex = instance.plugin.getCachedNotesSortIndex(currentFolder)
+            const newSortIndex = instance.plugin.data.sortCache[currentFolder.path].notes
 
 
             function getSortOrder(element: Element | null): number | null {
                 if (!element) return null
                 const libraryElement = element as LibraryDivElement
-                const id = instance.plugin.getId(libraryElement.file)
-                return newSortIndex[id]
+                return newSortIndex[libraryElement.file.path]
             }
 
             let previousSortOrder: number = 0, 
@@ -167,54 +168,49 @@ export class LibraryView extends ItemView {
     }
 
     async populateNotes(folder: TFolder) {
+        let hasNotes = false
         let activeNoteElement: HTMLElement
         let notesElement = this.notesElement
         notesElement.empty()
-        let hasNotes = false
 
-        let children = Array.from(folder.children)
-        let id = this.plugin.data.ids[folder.path]
-        if (id) {
-            let sortIndex = this.plugin.data.sortIndices[id].notes
-            children.sort((first, second) => {
-                let firstId = this.plugin.data.ids[first.path], firstIndex = sortIndex[firstId] ?? Number.MAX_VALUE
-                let secondId = this.plugin.data.ids[second.path], secondIndex = sortIndex[secondId] ?? Number.MAX_VALUE
-                return firstIndex - secondIndex
+        folder.children
+            .sort((first, second) => {
+                if (!this.plugin.data.sortCache[folder.path]) return 0
+                let sortIndex = this.plugin.data.sortCache[folder.path].notes
+                return sortIndex[first.path] - sortIndex[second.path]
             })
-        }
+            .forEach(async child => {
+                if (!(child instanceof TFile)) return;
+                const file = child as TFile; 
+                if (file.extension != 'md') return;
 
-        children.forEach(async child => {
-            if (!(child instanceof TFile)) return;
-            const file = child as TFile; 
-            if (file.extension != 'md') return;
+                hasNotes = true
 
-            hasNotes = true
+                let frontmatter = this.app.metadataCache.getCache(file.path)?.frontmatter ?? {}
+                let content = await this.generatePreviewText(file)
+                let title = file.basename
 
-            let frontmatter = this.app.metadataCache.getCache(file.path)?.frontmatter ?? {}
-            let content = frontmatter.preview ? frontmatter.preview : await this.generatePreviewText(file)
-            let title = frontmatter.title ?? file.basename
+                if (content.startsWith(title)) content = content.slice(title.length)
+                const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
+                const noteSummary = container.createDiv('library-summary')
+                noteSummary.createDiv({text: title, cls: 'title'})
+                noteSummary.createDiv({text: content, cls: 'content'})
 
-            if (content.startsWith(title)) content = content.slice(title.length)
-            const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
-            const noteSummary = container.createDiv('library-summary')
-            noteSummary.createDiv({text: title, cls: 'title'})
-            noteSummary.createDiv({text: content, cls: 'content'})
+                container.onClickEvent(async event => {
+                    if (activeNoteElement) activeNoteElement.removeClass('is-active')
+                    activeNoteElement = container
+                    activeNoteElement.addClass('is-active')
 
-            container.onClickEvent(async event => {
-                if (activeNoteElement) activeNoteElement.removeClass('is-active')
-                activeNoteElement = container
-                activeNoteElement.addClass('is-active')
+                    this.app.workspace.getLeaf().openFile(file);
+                })
 
-                this.app.workspace.getLeaf().openFile(file);
+                container.file = file
+
+                this.plugin.app.dragManager.handleDrag(container, (event) => {
+                    this.plugin.app.dragManager.dragFile(event, file)
+                    this.currentlyDragging = container
+                })
             })
-
-            container.file = file
-
-            this.plugin.app.dragManager.handleDrag(container, (event) => {
-                this.plugin.app.dragManager.dragFile(event, file)
-                this.currentlyDragging = container
-            })
-        })
 
         if (!hasNotes) {
             notesElement.createDiv({text: 'No notes', cls: 'library-empty'})

@@ -36,8 +36,9 @@ export class FileExplorerWrapper {
         // }
     }
     isNavigable(file: TAbstractFile) : boolean {
-        if (file instanceof TFile) return false;
+        // TODO: breaks when no attachments path is set
         const attachmentsPath = this.plugin.app.vault.getConfig("attachmentFolderPath").slice(2)
+        if (file instanceof TFile) return false;
         if (file.name == attachmentsPath) return false;
         return true
     }
@@ -69,6 +70,7 @@ export class FileExplorerWrapper {
                 console.log('missing navFolder for folder:', folder)
             }
 
+            // console.log('createFolderDom', navFolder)
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
             const toggleCollapsed = navFolder.toggleCollapsed

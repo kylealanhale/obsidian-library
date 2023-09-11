@@ -36,8 +36,8 @@
 }
 .library-summary-container {
     --line-height: 1.5em;
-    /* margin: 0; */
-    /* border-radius: 0; */
+    margin: 0;
+    border-radius: 0;
     /* background-color: red; */
     /* margin: 0 0.5em; */
     padding: calc(var(--line-height) / 2);
@@ -74,7 +74,7 @@
     visibility: hidden;
 }
 .library-empty {
-    background-color: #eee;
+    background-color: #e0e0e0;
     color: var(--notes-background-color);
     font-size: 1.5em;
     padding: 1em 3em;
