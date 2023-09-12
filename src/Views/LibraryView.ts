@@ -103,7 +103,7 @@ export class LibraryView extends ItemView {
                 this.notesElement.insertAfter(this.reorderMarkerElement, receivingElement)
             }
         })
-        this.handleEvent(global, 'dragend', (event: DragEvent) => {
+        this.handleEvent(global, 'dragend', async (event: DragEvent) => {
             instance.reorderMarkerElement.removeClass('dragging')
 
             if (!instance.currentlyDragging) return
@@ -143,7 +143,7 @@ export class LibraryView extends ItemView {
 
             instance.plugin.setNoteSortOrder(instance.currentlyDragging.file, newSortOrder)
             instance.plugin.persistNotesSortIndex(currentFolder, newSortIndex)
-            instance.populateNotes(currentFolder)
+            await instance.populateNotes(currentFolder)
 
             instance.currentlyDragging = null
         })
@@ -173,28 +173,28 @@ export class LibraryView extends ItemView {
         let notesElement = this.notesElement
         notesElement.empty()
 
-        folder.children
-            .sort((first, second) => {
-                if (!this.plugin.data.sortCache[folder.path]) return 0
-                let sortIndex = this.plugin.data.sortCache[folder.path].notes
-                return sortIndex[first.name] - sortIndex[second.name]
-            })
-            .forEach(async child => {
-                if (!(child instanceof TFile)) return;
-                const file = child as TFile; 
+        const children = folder.children.filter((child) => child instanceof TFile) as TFile[]
+        const cache = this.plugin.data.sortCache[folder.path]
+        if (cache) {
+            let sortIndex = cache.notes
+            children.sort((first, second) => sortIndex[first.name] - sortIndex[second.name])
+        }
+        const previews = await Promise.all(children.map(async (child) => await this.generatePreviewText(child as TFile)))
+
+        children
+            .forEach((file, index) => {
                 if (file.extension != 'md') return;
+                let preview = previews[index]
 
                 hasNotes = true
 
-                let frontmatter = this.app.metadataCache.getCache(file.path)?.frontmatter ?? {}
-                let content = await this.generatePreviewText(file)
                 let title = file.basename
 
-                if (content.startsWith(title)) content = content.slice(title.length)
+                if (preview.startsWith(title)) preview = preview.slice(title.length)
                 const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
                 const noteSummary = container.createDiv('library-summary')
                 noteSummary.createDiv({text: title, cls: 'title'})
-                noteSummary.createDiv({text: content, cls: 'content'})
+                noteSummary.createDiv({text: preview, cls: 'preview'})
 
                 container.onClickEvent(async event => {
                     if (activeNoteElement) activeNoteElement.removeClass('is-active')

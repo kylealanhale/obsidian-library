@@ -82,16 +82,14 @@ export default class LibraryPlugin extends Plugin {
             this.saveLibraryData()
         }))
 
+        // // TODO: Update preview cache when modified
         // let createNotice = new Notice('create...', 10000000);
         // this.vaultEvents.push(this.app.vault.on('create', async (file) => {
         //     createNotice.setMessage(`create: ${file.path}`)
         //     if (!(file instanceof TFile)) { return }
 
-        //     await this.app.fileManager.processFrontMatter(file, (frontMatter) => {
-        //         // frontMatter.uid = id
-        //     })
         //     let spec = await this.getOrCreateFolderSpec(file.getParent())
-        //     // spec.notes.items.push(id)
+        //     spec.sort.notes.items.push(file.name)
         //     this.saveFolderSpec(file.getParent(), spec)
 
         //     await this.cacheFolderToMemory(file.getParent())
