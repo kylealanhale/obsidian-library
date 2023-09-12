@@ -12,6 +12,8 @@ export interface EventHandler {
     fn: Function
 }
 
+export type UpdateHandler = (folder: TFile) => void;
+
 
 export class LibraryView extends ItemView {
     plugin: LibraryPlugin
@@ -35,7 +37,10 @@ export class LibraryView extends ItemView {
         this.plugin = plugin
         this.leaf = leaf
         this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
-        this.plugin.handleUpdates(this.populateNotes.bind(this))
+        this.plugin.handleUpdates((file) => {
+            delete this.previewCache[file.path]
+            this.populateNotes(file.getParent())
+        })
 
         this.icon = "library"
     }
@@ -82,7 +87,7 @@ export class LibraryView extends ItemView {
 
         // Set up drag and drop
         this.reorderMarkerElement = this.notesLeaf.containerEl.createDiv('library-reorder-marker')
-        this.handleEvent(global, 'dragover', (event: DragEvent) => {
+        this.handleEvent(this.notesElement, 'dragover', (event: DragEvent) => {
             const parentRect = this.notesElement.getBoundingClientRect()
             const receivingTopmostChild = document.elementFromPoint(parentRect.left + 1, event.clientY) as Element
             const receivingElement = receivingTopmostChild.closest('.library-summary-container') as LibraryDivElement
@@ -103,17 +108,16 @@ export class LibraryView extends ItemView {
                 this.notesElement.insertAfter(this.reorderMarkerElement, receivingElement)
             }
         })
-        this.handleEvent(global, 'dragend', async (event: DragEvent) => {
+        this.handleEvent(this.notesElement, 'dragend', async (event: DragEvent) => {
             instance.reorderMarkerElement.removeClass('dragging')
 
             if (!instance.currentlyDragging) return
             const currentFolder = instance.currentlyDragging.file.getParent()
-            const newSortIndex = instance.plugin.data.sortCache[currentFolder.path].notes
-
 
             function getSortOrder(element: Element | null): number | null {
                 if (!element) return null
-                return newSortIndex[(element as LibraryDivElement).file.name]
+                const sortIndex = instance.plugin.data.sortCache[currentFolder.path].notes
+                return sortIndex[(element as LibraryDivElement).file.name]
             }
 
             let previousSortOrder: number = 0, 
@@ -139,10 +143,12 @@ export class LibraryView extends ItemView {
             }
 
             const newSortOrder = previousSortOrder + ((nextSortOrder - previousSortOrder) / 2)
-            console.log(`sort order: ${previousSortOrder} + ((${nextSortOrder} - ${previousSortOrder}) / 2) = ${newSortOrder}`)
 
-            instance.plugin.setNoteSortOrder(instance.currentlyDragging.file, newSortOrder)
-            instance.plugin.persistNotesSortIndex(currentFolder, newSortIndex)
+            // Update the sort cache and persist to spec
+            let file = instance.currentlyDragging.file
+            instance.plugin.data.sortCache[file.getParent().path].notes[file.name] = newSortOrder
+            instance.plugin.updateSpecSortOrder(currentFolder)
+
             await instance.populateNotes(currentFolder)
 
             instance.currentlyDragging = null
