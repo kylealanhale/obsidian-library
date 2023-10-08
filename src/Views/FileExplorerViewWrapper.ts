@@ -66,11 +66,7 @@ export class FileExplorerWrapper {
         const originalCreateFolderDom = instance.view.createFolderDom.bind(this.view)
         instance.view.createFolderDom = function (folder: TFolder) {
             let navFolder = originalCreateFolderDom(folder) as FileExplorerNavFolder
-            if (!navFolder) {
-                console.log('missing navFolder for folder:', folder)
-            }
 
-            // console.log('createFolderDom', navFolder)
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
             const toggleCollapsed = navFolder.toggleCollapsed
@@ -88,10 +84,6 @@ export class FileExplorerWrapper {
                 instance.setActiveEl(navFolder.selfEl)
                 instance.plugin.data.settings.currentPath = folder.path
                 instance.clickHandler(folder)
-            })
-
-            instance.plugin.app.dragManager.handleDrop(navFolder.selfEl, (event: DragEvent) => {
-                console.log('dropped', event)
             })
 
             return navFolder

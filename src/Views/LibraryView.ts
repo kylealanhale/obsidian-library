@@ -93,18 +93,22 @@ export class LibraryView extends ItemView {
             const receivingElement = receivingTopmostChild.closest('.library-summary-container') as LibraryDivElement
 
             // There might be some problems hiding here due to the gap caused by the border radius
-            if (!receivingElement || receivingElement == this.currentlyDragging) return
+            if (!receivingElement || receivingElement == this.currentlyDragging) {
+                this.reorderMarkerElement.removeClass('dragging')
+                return
+            }
+            this.reorderMarkerElement.addClass('dragging')
 
-            const receivingRect = receivingElement.getBoundingClientRect()
             // Find the midpoint of the element and see if the mouse is above or below it
+            const receivingRect = receivingElement.getBoundingClientRect()
             const isAbove = receivingRect.top + receivingRect.height / 2 > event.clientY
 
-            // If the mouse is above the midpoint, insert the marker above the element
-            this.reorderMarkerElement.addClass('dragging')
-            if (isAbove) {
+            // If the mouse is above the midpoint, insert the marker above the element.
+            // The position checking is important for performance reasons (`insertBefore` etc. are slow).
+            if (isAbove && receivingElement.previousElementSibling != this.reorderMarkerElement) {
                 this.notesElement.insertBefore(this.reorderMarkerElement, receivingElement)
             } 
-            else {
+            if (!isAbove && receivingElement.nextElementSibling != this.reorderMarkerElement) {
                 this.notesElement.insertAfter(this.reorderMarkerElement, receivingElement)
             }
         })
@@ -147,6 +151,7 @@ export class LibraryView extends ItemView {
             // Update the sort cache and persist to spec
             let file = instance.currentlyDragging.file
             instance.plugin.data.sortCache[file.getParent().path].notes[file.name] = newSortOrder
+            instance.plugin.saveLibraryData()
             instance.plugin.updateSpecSortOrder(currentFolder)
 
             await instance.populateNotes(currentFolder)
@@ -198,17 +203,12 @@ export class LibraryView extends ItemView {
                 if (preview.startsWith(title)) preview = preview.slice(title.length)
 
                 // TODO: Figure out if this new hijacked approach will work
-                const navFile = this.wrapper.view.createItemDom(file)
-                // const container = itemDom.el as LibraryDivElement
-                // console.log('itemDom', navFile)
+                const itemDom = this.wrapper.view.createItemDom(file)
+                const container = itemDom.el as LibraryDivElement
+                container.addClass('library-summary-container')
 
-                // this.notesElement.appendChild(container)
-                navFile.el.createDiv({text: preview, cls: 'nav-file-title-preview'})
-                
-                const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
-                const noteSummary = container.createDiv('library-summary')
-                noteSummary.createDiv({text: title, cls: 'title'})
-                noteSummary.createDiv({text: preview, cls: 'preview'})
+                this.notesElement.appendChild(container)
+                itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
 
                 container.onClickEvent(async event => {
                     if (activeNoteElement) activeNoteElement.removeClass('is-active')
@@ -224,16 +224,9 @@ export class LibraryView extends ItemView {
                     this.plugin.app.dragManager.dragFile(event, file)
                     let view = this.wrapper.view
                     if (view.fileBeingRenamed) return null;
-                    let a = view.dragFiles(event, navFile);
-                    console.log(view)
+                    let a = view.dragFiles(event, itemDom);
                     this.currentlyDragging = container
                 })
-                // return r.handleDrag(i, (function(o) {
-                //     if (t.fileBeingRenamed)
-                //         return null;
-                //     var a = t.dragFiles(o, n);
-                //     return a || (r.updateSource([i], "is-being-dragged"), r.dragFile(o, e))
-                // })), this.attachFileEvents(n), n
             })
 
         if (!hasNotes) {

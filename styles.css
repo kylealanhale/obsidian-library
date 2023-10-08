@@ -40,14 +40,20 @@
     border-radius: 0;
     /* background-color: red; */
     /* margin: 0 0.5em; */
-    padding: calc(var(--line-height) / 2);
+    padding: 0;
 }
 .library-summary-container.receiving {
     background-color: #eee;
 }
+.library-summary-container .nav-file-title {
+    display: block;
+    margin: 0;
+    padding: calc(var(--line-height) / 2);
+}
+
 .library-summary {
     line-height: var(--line-height);
-    height: calc(var(--line-height) * 5);
+    height: calc(var(--line-height) * 3);
     margin: 0;
     /* background-color: red; */
     /* border-radius: 3px; */

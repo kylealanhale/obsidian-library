@@ -39,7 +39,6 @@ export default class LibraryPlugin extends Plugin {
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
 
         this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
-            // console.log('metadata changed:', file, metadata)
             // Cache parent folder if it hasn't been already
             let parent = file.getParent()
             if (this.data.sortCache[parent.path]) { return }
@@ -271,4 +270,5 @@ class LibrarySettingsTab extends PluginSettingTab {
  * 
  * Nice to have:
  * - Undo/redo for manual sorting
+ * - per-folder memory of selected note(s), cursor position, etc.
  */
