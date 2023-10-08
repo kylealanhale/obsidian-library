@@ -38,10 +38,6 @@ export default class LibraryPlugin extends Plugin {
 
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
 
-        this.app.workspace.onLayoutReady(async () => {
-            this.activateView()
-        })
-
         this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
             // console.log('metadata changed:', file, metadata)
             // Cache parent folder if it hasn't been already
@@ -53,53 +49,56 @@ export default class LibraryPlugin extends Plugin {
             await this.cacheFolder(parent)
         }))
 
-        this.vaultEvents.push(this.app.vault.on('create', async (file) => {
-            if (!(file instanceof TFile)) { return }
-            const parent = file.getParent()
+        this.app.workspace.onLayoutReady(async () => {
+            this.activateView()
 
-            // Add new note to folder spec
-            let spec = await this.getOrCreateFolderSpec(parent)
-            spec.sort.notes.items.push(file.name)
-            this.saveFolderSpec(parent, spec)
+            this.vaultEvents.push(this.app.vault.on('create', async (file) => {
+                if (!(file instanceof TFile)) { return }
+                const parent = file.getParent()
 
-            // Update cache (it'll read from the spec that was just updated)
-            await this.cacheFolder(parent)
+                // Add new note to folder spec
+                let spec = await this.getOrCreateFolderSpec(parent)
+                spec.sort.notes.items.push(file.name)
+                this.saveFolderSpec(parent, spec)
 
-            this.updateHandler(file)
-        }))
+                // Update cache (it'll read from the spec that was just updated)
+                await this.cacheFolder(parent)
 
-        this.vaultEvents.push(this.app.vault.on('modify', async (file) => {
-            if (!(file instanceof TFile)) { return }
-            this.updateHandler(file)
-        }))
+                this.updateHandler(file, parent)
+            }))
 
-        this.vaultEvents.push(this.app.vault.on('rename', async (file, oldPath) => {
-            if (!(file instanceof TFile)) { return }
-            const parent = file.getParent()
-            const oldName = oldPath.split('/').pop() as string
+            this.vaultEvents.push(this.app.vault.on('modify', async (file) => {
+                if (!(file instanceof TFile)) { return }
+                this.updateHandler(file, file.getParent())
+            }))
 
-            // Update order in folder spec
-            this.data.sortCache[parent.path].notes[file.name] = this.data.sortCache[parent.path].notes[oldName]
-            delete this.data.sortCache[parent.path].notes[oldName]
-            this.saveLibraryData()
-            this.updateSpecSortOrder(parent)
+            this.vaultEvents.push(this.app.vault.on('rename', async (file, oldPath) => {
+                if (!(file instanceof TFile)) { return }
+                const parent = file.getParent()
+                const oldName = oldPath.split('/').pop() as string
 
-            this.updateHandler(file)
-        }))
+                // Update order in folder spec
+                this.data.sortCache[parent.path].notes[file.name] = this.data.sortCache[parent.path].notes[oldName]
+                delete this.data.sortCache[parent.path].notes[oldName]
+                this.saveLibraryData()
+                this.updateSpecSortOrder(parent)
 
-        this.vaultEvents.push(this.app.vault.on('delete', async (file) => {
-            if (!(file instanceof TFile)) { return }
-            const parentPath = file.path.split('/').slice(0, -1).join('/')
-            const parent = this.app.vault.getAbstractFileByPath(parentPath) as TFolder
-            console.log('delete', file, parent)
+                this.updateHandler(file, parent)
+            }))
 
-            // Update order in folder spec
-            delete this.data.sortCache[parent.path].notes[file.name]
-            this.saveLibraryData()
-            this.updateSpecSortOrder(parent)
+            this.vaultEvents.push(this.app.vault.on('delete', async (file) => {
+                if (!(file instanceof TFile)) { return }
+                const parentPath = file.path.split('/').slice(0, -1).join('/')
+                const parent = this.app.vault.getAbstractFileByPath(parentPath) as TFolder
 
-            this.updateHandler(file)
-        }))
+                // Update order in folder spec
+                delete this.data.sortCache[parent.path].notes[file.name]
+                this.saveLibraryData()
+                this.updateSpecSortOrder(parent)
+
+                this.updateHandler(file, parent)
+            }))
+        })
     }
 
     onunload() {
@@ -267,7 +266,9 @@ class LibrarySettingsTab extends PluginSettingTab {
 /**
  * TODO:
  * - Add sorting options to notes list
- * - Undo/redo
- * - Handle scenario of previously un-sorted notes (create them when expected and not found)
- * - Bug: 'create' handler is causing app to stall on startup
+ * - Drag and drop into folders for moving
+ * - Multi-select for dragging and reordering... ugh
+ * 
+ * Nice to have:
+ * - Undo/redo for manual sorting
  */

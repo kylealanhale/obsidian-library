@@ -12,7 +12,7 @@ export interface EventHandler {
     fn: Function
 }
 
-export type UpdateHandler = (folder: TFile) => void;
+export type UpdateHandler = (file: TFile, parent: TFolder) => void;
 
 
 export class LibraryView extends ItemView {
@@ -37,9 +37,9 @@ export class LibraryView extends ItemView {
         this.plugin = plugin
         this.leaf = leaf
         this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
-        this.plugin.handleUpdates((file) => {
+        this.plugin.handleUpdates((file, folder) => {
             delete this.previewCache[file.path]
-            this.populateNotes(file.getParent())
+            this.populateNotes(folder)
         })
 
         this.icon = "library"
@@ -120,7 +120,7 @@ export class LibraryView extends ItemView {
                 return sortIndex[(element as LibraryDivElement).file.name]
             }
 
-            let previousSortOrder: number = 0, 
+            let previousSortOrder: number = 0,
                 previousCandidateSortOrder = getSortOrder(instance.reorderMarkerElement.previousElementSibling)
             let nextSortOrder: number = 0, 
                 nextCandidateSortOrder = getSortOrder(instance.reorderMarkerElement.nextElementSibling)
@@ -190,13 +190,21 @@ export class LibraryView extends ItemView {
         children
             .forEach((file, index) => {
                 if (file.extension != 'md') return;
-                let preview = previews[index]
 
                 hasNotes = true
 
                 let title = file.basename
-
+                let preview = previews[index]
                 if (preview.startsWith(title)) preview = preview.slice(title.length)
+
+                // TODO: Figure out if this new hijacked approach will work
+                const navFile = this.wrapper.view.createItemDom(file)
+                // const container = itemDom.el as LibraryDivElement
+                // console.log('itemDom', navFile)
+
+                // this.notesElement.appendChild(container)
+                navFile.el.createDiv({text: preview, cls: 'nav-file-title-preview'})
+                
                 const container = notesElement.createDiv('library-summary-container nav-file-title') as LibraryDivElement
                 const noteSummary = container.createDiv('library-summary')
                 noteSummary.createDiv({text: title, cls: 'title'})
@@ -214,8 +222,18 @@ export class LibraryView extends ItemView {
 
                 this.plugin.app.dragManager.handleDrag(container, (event) => {
                     this.plugin.app.dragManager.dragFile(event, file)
+                    let view = this.wrapper.view
+                    if (view.fileBeingRenamed) return null;
+                    let a = view.dragFiles(event, navFile);
+                    console.log(view)
                     this.currentlyDragging = container
                 })
+                // return r.handleDrag(i, (function(o) {
+                //     if (t.fileBeingRenamed)
+                //         return null;
+                //     var a = t.dragFiles(o, n);
+                //     return a || (r.updateSource([i], "is-being-dragged"), r.dragFile(o, e))
+                // })), this.attachFileEvents(n), n
             })
 
         if (!hasNotes) {

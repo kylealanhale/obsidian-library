@@ -53,12 +53,12 @@
     /* border-radius: 3px; */
     overflow: hidden;
 }
-.library-summary .title {
+.library-summary .title, .library-notes .nav-file-title-content {
     font-weight: bold;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
-.library-summary .preview {
+.library-summary .preview, .library-notes .nav-file-title-preview {
     color: #666;
 }
 .library-reorder-marker {

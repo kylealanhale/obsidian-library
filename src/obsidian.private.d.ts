@@ -6,12 +6,15 @@ declare module 'obsidian' {
         files: WeakMap<HTMLDivElement, TAbstractFile>;
         onCreate(file: TAbstractFile): void;
         createFolderDom(folder: TFolder): FileExplorerNavFolder;
+        createItemDom(folder: TFile): FileExplorerNavFile;
         getViewType(): string;
         getDisplayText(): string;
         revealInFolder(file: TAbstractFile): void;
         afterCreate(): void;
         sort(): void;
         setFocusedItem(item: FileExplorerNavBase | null): void;
+        fileBeingRenamed: TFile
+        dragFiles(event: Event, file: FileExplorerNavFile): unknown;
     }
 
     export class InternalPlugins {
@@ -56,6 +59,7 @@ declare module 'obsidian' {
     export interface FileExplorerNavBase {
         el: HTMLDivElement;
         selfEl: HTMLDivElement;
+        innerEl: HTMLDivElement;
         titleInnerEl: HTMLDivElement;
         fileExplorer: FileExplorerView;
     }

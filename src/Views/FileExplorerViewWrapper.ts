@@ -49,7 +49,7 @@ export class FileExplorerWrapper {
         instance.view.load = function () {
             originalLoad()
             instance.revealCurrentPath()
-        }
+        }.bind(instance.view)
     }
 
     patchOnCreate() {
@@ -58,7 +58,7 @@ export class FileExplorerWrapper {
         instance.view.onCreate = function(file: TAbstractFile) {
             if (!instance.isNavigable(file)) return;
             originalOnCreate(file)
-        }
+        }.bind(instance.view)
     }
 
     patchCreateFolderDom() {
@@ -90,8 +90,12 @@ export class FileExplorerWrapper {
                 instance.clickHandler(folder)
             })
 
+            instance.plugin.app.dragManager.handleDrop(navFolder.selfEl, (event: DragEvent) => {
+                console.log('dropped', event)
+            })
+
             return navFolder
-        }
+        }.bind(instance.view)
     }
 
     setActiveEl(el: HTMLDivElement) {
