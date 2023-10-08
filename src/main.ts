@@ -263,17 +263,3 @@ class LibrarySettingsTab extends PluginSettingTab {
                 }));
     }
 }
-
-/**
- * TODO:
- * - Add sorting options to notes list
- * - Reveal current note in library
- * - Drag and drop into folders for moving
- * - Multi-select for dragging and reordering... ugh
- * - bug: 'name' key error in dragend handler
- * - bug: folder arrow indicator wonkiness
- * 
- * Nice to have:
- * - Undo/redo for manual sorting
- * - per-folder memory of selected note(s), cursor position, etc.
- */
