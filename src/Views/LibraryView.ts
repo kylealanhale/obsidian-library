@@ -36,10 +36,10 @@ export class LibraryView extends ItemView {
         super(leaf);
         this.plugin = plugin
         this.leaf = leaf
-        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.populateNotes.bind(this));
+        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.render.bind(this));
         this.plugin.handleUpdates((file, folder) => {
             delete this.previewCache[file.path]
-            this.populateNotes(folder)
+            this.render(folder)
         })
 
         this.icon = "library"
@@ -115,8 +115,11 @@ export class LibraryView extends ItemView {
         this.handleEvent(this.notesElement, 'dragend', async (event: DragEvent) => {
             instance.reorderMarkerElement.removeClass('dragging')
 
+            // Make sure we're dragging and that the cache hasn't disappeared, which
+            // happens when moving a note to a different folder
             if (!instance.currentlyDragging) return
             const currentFolder = instance.currentlyDragging.file.getParent()
+            if (!instance.plugin.data.sortCache[currentFolder.path]) return
 
             function getSortOrder(element: Element | null): number | null {
                 if (!element) return null
@@ -154,7 +157,7 @@ export class LibraryView extends ItemView {
             instance.plugin.saveLibraryData()
             instance.plugin.updateSpecSortOrder(currentFolder)
 
-            await instance.populateNotes(currentFolder)
+            await instance.render(currentFolder)
 
             instance.currentlyDragging = null
         })
@@ -178,7 +181,7 @@ export class LibraryView extends ItemView {
         empties.forEach(empty => empty.parentNode?.removeChild(empty))
     }
 
-    async populateNotes(folder: TFolder) {
+    async render(folder: TFolder) {
         let hasNotes = false
         let activeNoteElement: HTMLElement
         let notesElement = this.notesElement

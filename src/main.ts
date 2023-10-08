@@ -77,10 +77,12 @@ export default class LibraryPlugin extends Plugin {
                 const oldName = oldPath.split('/').pop() as string
 
                 // Update order in folder spec
-                this.data.sortCache[parent.path].notes[file.name] = this.data.sortCache[parent.path].notes[oldName]
-                delete this.data.sortCache[parent.path].notes[oldName]
-                this.saveLibraryData()
-                this.updateSpecSortOrder(parent)
+                if (this.data.sortCache[parent.path]) {
+                    this.data.sortCache[parent.path].notes[file.name] = this.data.sortCache[parent.path].notes[oldName]
+                    delete this.data.sortCache[parent.path].notes[oldName]
+                    this.saveLibraryData()
+                    this.updateSpecSortOrder(parent)
+                }
 
                 this.updateHandler(file, parent)
             }))
@@ -265,8 +267,11 @@ class LibrarySettingsTab extends PluginSettingTab {
 /**
  * TODO:
  * - Add sorting options to notes list
+ * - Reveal current note in library
  * - Drag and drop into folders for moving
  * - Multi-select for dragging and reordering... ugh
+ * - bug: 'name' key error in dragend handler
+ * - bug: folder arrow indicator wonkiness
  * 
  * Nice to have:
  * - Undo/redo for manual sorting
