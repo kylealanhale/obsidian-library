@@ -50,6 +50,9 @@
     margin: 0;
     padding: calc(var(--line-height) / 2);
 }
+.library-summary-container.is-active {
+    background-color: #e0e2ea;
+}
 
 .library-summary {
     line-height: var(--line-height);

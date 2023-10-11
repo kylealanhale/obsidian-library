@@ -209,6 +209,11 @@ export class LibraryView extends ItemView {
                 const itemDom = this.wrapper.view.createItemDom(file)
                 const container = itemDom.el as LibraryDivElement
                 container.addClass('library-summary-container')
+                const currentNote = this.plugin.app.workspace.getActiveFile()
+                if (currentNote && currentNote.path == file.path) {
+                    container.addClass('is-active')
+                    activeNoteElement = container
+                }
 
                 this.notesElement.appendChild(container)
                 itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
