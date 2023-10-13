@@ -41,12 +41,6 @@ export class LibraryView extends ItemView {
             delete this.previewCache[file.path]
             this.render(folder)
         })
-        this.plugin.revealInFolderCallback = () => {
-            let activeFile = this.plugin.app.workspace.getActiveFile()
-            if (!activeFile) return
-            console.log('Reveal in folder callback triggered')
-            this.wrapper.view.revealInFolder(activeFile.getParent())
-        }
 
         this.icon = "library"
     }
