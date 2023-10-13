@@ -202,54 +202,54 @@ export class LibraryView extends ItemView {
         }
         const previews = await Promise.all(children.map(async (child) => await this.generatePreviewText(child as TFile)))
 
-        children
-            .forEach((file, index) => {
-                if (file.extension != 'md') return;
+        for (let index = 0; index < children.length; index++) {
+            const file = children[index]
+            if (file.extension != 'md') return;
 
-                if (spec.activeNote == file.path) {
-                    this.plugin.app.workspace.getLeaf(false).openFile(file)
-                }
+            if (spec.activeNote == file.path) {
+                await this.plugin.app.workspace.getLeaf(false).openFile(file)
+            }
 
-                hasNotes = true
+            hasNotes = true
 
-                let title = file.basename
-                let preview = previews[index]
-                if (preview.startsWith(title)) preview = preview.slice(title.length)
+            let title = file.basename
+            let preview = previews[index]
+            if (preview.startsWith(title)) preview = preview.slice(title.length)
 
-                // TODO: Figure out if this new hijacked approach will work
-                const itemDom = this.wrapper.view.createItemDom(file)
-                const container = itemDom.el as LibraryDivElement
-                container.addClass('library-summary-container')
-                const currentNote = this.plugin.app.workspace.getActiveFile()
-                if (currentNote && currentNote.path == file.path) {
-                    container.addClass('is-active')
-                    activeNoteElement = container
-                }
+            // TODO: Figure out if this new hijacked approach will work
+            const itemDom = this.wrapper.view.createItemDom(file)
+            const container = itemDom.el as LibraryDivElement
+            container.addClass('library-summary-container')
+            const currentNote = this.plugin.app.workspace.getActiveFile()
+            if (currentNote && currentNote.path == file.path) {
+                container.addClass('is-active')
+                activeNoteElement = container
+            }
 
-                this.notesElement.appendChild(container)
-                itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
+            this.notesElement.appendChild(container)
+            itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
 
-                container.onClickEvent(async event => {
-                    if (activeNoteElement) activeNoteElement.removeClass('is-active')
-                    activeNoteElement = container
-                    activeNoteElement.addClass('is-active')
+            container.onClickEvent(async event => {
+                if (activeNoteElement) activeNoteElement.removeClass('is-active')
+                activeNoteElement = container
+                activeNoteElement.addClass('is-active')
 
-                    this.app.workspace.getLeaf().openFile(file);
+                this.app.workspace.getLeaf().openFile(file);
 
-                    spec.activeNote = file.path
-                    this.plugin.saveFolderSpec(file.getParent(), spec)
-                })
-
-                container.file = file
-
-                this.plugin.app.dragManager.handleDrag(container, (event) => {
-                    this.plugin.app.dragManager.dragFile(event, file)
-                    let view = this.wrapper.view
-                    if (view.fileBeingRenamed) return null;
-                    let a = view.dragFiles(event, itemDom);
-                    this.currentlyDragging = container
-                })
+                spec.activeNote = file.path
+                this.plugin.saveFolderSpec(file.getParent(), spec)
             })
+
+            container.file = file
+
+            this.plugin.app.dragManager.handleDrag(container, (event) => {
+                this.plugin.app.dragManager.dragFile(event, file)
+                let view = this.wrapper.view
+                if (view.fileBeingRenamed) return null;
+                let a = view.dragFiles(event, itemDom);
+                this.currentlyDragging = container
+            })
+        }
 
         if (!hasNotes) {
             notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
