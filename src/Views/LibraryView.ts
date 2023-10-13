@@ -41,6 +41,12 @@ export class LibraryView extends ItemView {
             delete this.previewCache[file.path]
             this.render(folder)
         })
+        this.plugin.revealInFolderCallback = () => {
+            let activeFile = this.plugin.app.workspace.getActiveFile()
+            if (!activeFile) return
+            console.log('Reveal in folder callback triggered')
+            this.wrapper.view.revealInFolder(activeFile.getParent())
+        }
 
         this.icon = "library"
     }
@@ -186,6 +192,7 @@ export class LibraryView extends ItemView {
         let activeNoteElement: HTMLElement
         let notesElement = this.notesElement
         notesElement.empty()
+        const spec = await this.plugin.getOrCreateFolderSpec(folder)
 
         const children = folder.children.filter((child) => child instanceof TFile) as TFile[]
         const cache = this.plugin.data.sortCache[folder.path]
@@ -198,6 +205,10 @@ export class LibraryView extends ItemView {
         children
             .forEach((file, index) => {
                 if (file.extension != 'md') return;
+
+                if (spec.activeNote == file.path) {
+                    this.plugin.app.workspace.getLeaf(false).openFile(file)
+                }
 
                 hasNotes = true
 
@@ -224,6 +235,9 @@ export class LibraryView extends ItemView {
                     activeNoteElement.addClass('is-active')
 
                     this.app.workspace.getLeaf().openFile(file);
+
+                    spec.activeNote = file.path
+                    this.plugin.saveFolderSpec(file.getParent(), spec)
                 })
 
                 container.file = file

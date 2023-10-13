@@ -186,7 +186,8 @@ export default class LibraryPlugin extends Plugin {
             sort: {
                 folders: { field: 'title', direction: 'ascending', items: [] },
                 notes: { field: 'title', direction: 'ascending', items: [] }
-            }
+            },
+            activeNote: ''
         }
 
         if (await folder.vault.adapter.exists(specPath)) {

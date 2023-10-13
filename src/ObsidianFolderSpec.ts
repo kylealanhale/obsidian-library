@@ -8,4 +8,5 @@ export interface ObsidianFolderSpec {
         folders: SortDefinition
         notes: SortDefinition
     }
+    activeNote: string
 }
