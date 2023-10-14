@@ -30,7 +30,7 @@ export default class LibraryPlugin extends Plugin {
     metadataEvents: EventRef[] = []
     vaultEvents: EventRef[] = []
     events: EventHandler[] = []
-    updateHandler: UpdateHandler = (_) => {}
+    handleUpdates: UpdateHandler = async (_) => {}
 
     async onload() {
         console.log('*************************** Starting Library Plugin ***************************')
@@ -63,13 +63,13 @@ export default class LibraryPlugin extends Plugin {
                 // Update cache (it'll read from the spec that was just updated)
                 await this.cacheFolder(parent)
 
-                this.updateHandler(file, parent)
+                await this.handleUpdates(file, parent)
             }))
 
             this.vaultEvents.push(this.app.vault.on('modify', async (file) => {
                 if (!(file instanceof TFile)) { return }
 
-                this.updateHandler(file, file.getParent())
+                await this.handleUpdates(file, file.getParent())
             }))
 
             this.vaultEvents.push(this.app.vault.on('rename', async (file, oldPath) => {
@@ -85,7 +85,7 @@ export default class LibraryPlugin extends Plugin {
                     this.updateSpecSortOrder(parent)
                 }
 
-                this.updateHandler(file, parent)
+                await this.handleUpdates(file, parent)
             }))
 
             this.vaultEvents.push(this.app.vault.on('delete', async (file) => {
@@ -98,7 +98,7 @@ export default class LibraryPlugin extends Plugin {
                 this.saveLibraryData()
                 this.updateSpecSortOrder(parent)
 
-                this.updateHandler(file, parent)
+                await this.handleUpdates(file, parent)
             }))
         })
     }
@@ -133,10 +133,6 @@ export default class LibraryPlugin extends Plugin {
         });
         this.app.workspace.revealLeaf(leaf);
     } 
-
-    handleUpdates(handler: UpdateHandler) {
-        this.updateHandler = handler
-    }
 
     /**
      * Caches sort order from spec; has the side effect of creating

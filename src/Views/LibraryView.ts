@@ -13,7 +13,7 @@ export interface EventHandler {
     fn: Function
 }
 
-export type UpdateHandler = (file: TFile, parent: TFolder) => void;
+export type UpdateHandler = (file: TFile, parent: TFolder) => Promise<void>
 
 
 export class LibraryView extends ItemView {
@@ -38,11 +38,11 @@ export class LibraryView extends ItemView {
         super(leaf);
         this.plugin = plugin
         this.leaf = leaf
-        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.render.bind(this));
-        this.plugin.handleUpdates((file, folder) => {
+        this.wrapper = new FileExplorerWrapper(this.leaf, this.plugin, this.requestRender.bind(this));
+        this.plugin.handleUpdates = async (file, folder) => {
             delete this.previewCache[file.path]
-            this.render(folder)
-        })
+            await this.requestRender(folder)
+        }
 
         this.icon = "library"
     }
@@ -159,7 +159,7 @@ export class LibraryView extends ItemView {
             instance.plugin.saveLibraryData()
             instance.plugin.updateSpecSortOrder(currentFolder)
 
-            await instance.render(currentFolder)
+            await instance.requestRender(currentFolder)
 
             instance.currentlyDragging = null
         })
@@ -183,9 +183,19 @@ export class LibraryView extends ItemView {
         empties.forEach(empty => empty.parentNode?.removeChild(empty))
     }
 
-    async render(folder: TFolder) {
-        let hasNotes = false
-        let noteWasFound = false
+    renderQueue: TFolder[] = []
+    isRendering: boolean = false
+    async requestRender(folder: TFolder) {
+        this.renderQueue.push(folder)
+        await this.render()
+    }
+    async render() {
+        if (this.isRendering) return
+        this.isRendering = true
+
+        const folder = this.renderQueue.shift()
+        if (!folder) return
+
         let notesElement = this.notesElement
         notesElement.empty()
 
@@ -223,7 +233,6 @@ export class LibraryView extends ItemView {
 
             // If this is the folder's active note, open it
             if (spec.activeNote == file.path) {
-                noteWasFound = true
                 await this.openFile(file, spec, container)
             }
 
@@ -249,6 +258,9 @@ export class LibraryView extends ItemView {
                 this.currentlyDragging = container
             })
         }
+
+        this.isRendering = false
+        if (this.renderQueue.length) await this.render()
     }
 
     async openFile(file: TFile, spec: ObsidianFolderSpec, element: HTMLElement) {
