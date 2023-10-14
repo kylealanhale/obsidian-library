@@ -4,7 +4,6 @@ import LibraryPlugin from "src/main";
 // class FileExplorerView extends View { }
 export type ClickHandler = (folder: TFolder) => void;
 
-
 export class FileExplorerWrapper {
     clickHandler: ClickHandler
     view: FileExplorerView
@@ -21,19 +20,8 @@ export class FileExplorerWrapper {
         this.plugin = libraryPlugin
         this.clickHandler = clickHandler
 
-        // First the FileExplorerView view gets loaded, part of which is...
         this.patchLoad()
-        // ...calling onCreate on every abstract file.
-        this.patchOnCreate()
-        // onCreate then creates the DOM for each folder in the tree.
         this.patchCreateFolderDom()
-
-        // this.view.dom.infinityScroll.rootEl = this.viewf.fileItems["/"]
-        // const instance = this
-        // const computeSync = this.view.dom.infinityScroll.computeSync
-        // this.view.dom.infinityScroll.computeSync = function() {
-        //     computeSync.call(this)
-        // }
     }
     isNavigable(file: TAbstractFile) : boolean {
         // TODO: breaks when no attachments path is set
@@ -48,24 +36,42 @@ export class FileExplorerWrapper {
         const originalLoad = instance.view.load.bind(this.view);
         instance.view.load = function () {
             originalLoad()
-            instance.revealCurrentPath()
+
+            // Return to the last selected folder
+            instance.navigateToCurrentPath()
         }.bind(instance.view)
     }
 
-    patchOnCreate() {
+    patchSort(navFolder: FileExplorerNavFolder) {
+        // return
         const instance = this
-        const originalOnCreate = instance.view.onCreate.bind(this.view)
-        instance.view.onCreate = function(file: TAbstractFile) {
-            if (!instance.isNavigable(file)) return;
-            originalOnCreate(file)
-        }.bind(instance.view)
+        const originalSort = navFolder.sort.bind(navFolder)
+        navFolder.sort = function() {
+            const cache = instance.plugin.data.sortCache[this.file.path]
+            if (!cache) {
+                originalSort()
+                return
+            }
+
+            const children = (this.file.children as [TAbstractFile])
+                .filter((child) => child instanceof TFolder)  // No files allowed!
+                .sort((first, second) => cache.folders[first.name] - cache.folders[second.name])
+                .map((child) => this.fileExplorer.fileItems[child.path])
+                .filter((child) => child)
+
+            this.vChildren.setChildren(children)
+        }.bind(navFolder)
     }
 
+    /**
+     * Patch the FileExplorerView to add a click handler to folders.
+     */
     patchCreateFolderDom() {
         const instance = this
         const originalCreateFolderDom = instance.view.createFolderDom.bind(this.view)
         instance.view.createFolderDom = function (folder: TFolder) {
             let navFolder = originalCreateFolderDom(folder) as FileExplorerNavFolder
+            instance.patchSort(navFolder)
 
             // Prevent normal collapse behavior, so that the click can
             // show notes via the clickHandler below
@@ -96,7 +102,7 @@ export class FileExplorerWrapper {
         this.selectedEl.addClass('is-active')
     }
 
-    revealCurrentPath() {
+    navigateToCurrentPath() {
         let abstractFile = this.fileExplorerPlugin.app.vault.getAbstractFileByPath(this.plugin.data.settings.currentPath)
         let folder = abstractFile instanceof TFile ? (abstractFile as TFile).parent as TFolder : abstractFile as TFolder
         if (folder instanceof TFile) folder = (folder as TFile).parent as TFolder

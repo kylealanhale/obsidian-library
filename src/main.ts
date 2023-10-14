@@ -39,13 +39,12 @@ export default class LibraryPlugin extends Plugin {
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
 
         this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
-            // Cache parent folder if it hasn't been already
-            let parent = file.getParent()
-            if (this.data.sortCache[parent.path]) { return }
+            let parent = file.parent as TFolder
 
-            // Reset cache
-            this.data.sortCache[parent.path] = {folders: {} as SortIndex, notes: {} as SortIndex}
-            await this.cacheFolder(parent)
+            // Don't re-cache
+            if (!this.data.sortCache[parent.path]) {
+                await this.cacheFolder(parent)
+            }
         }))
 
         this.app.workspace.onLayoutReady(async () => {
@@ -143,7 +142,7 @@ export default class LibraryPlugin extends Plugin {
      * @param file File to cache
      */
     async cacheFolder(folder: TFolder) {
-        let sortCache = this.data.sortCache[folder.path]
+        let sortCache = this.data.sortCache[folder.path] = {folders: {} as SortIndex, notes: {} as SortIndex}
         let spec = await this.getOrCreateFolderSpec(folder)
 
         spec.sort.folders.items.forEach((item, index) => {
@@ -162,7 +161,9 @@ export default class LibraryPlugin extends Plugin {
             }
         })
 
-        this.saveLibraryData()
+        // If there's a parent that hasn't been cached, cache it
+        if (folder.parent) this.cacheFolder(folder.parent)
+        else this.saveLibraryData()
     }
 
 	async loadLibraryData() {

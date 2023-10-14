@@ -73,6 +73,7 @@ declare module 'obsidian' {
         childrenEl: HTMLDivElement;
         collapseEl: HTMLDivElement;
         toggleCollapsed(yes: boolean): void;
+        sort(): void;
     }
     export interface LibraryDivElement extends HTMLDivElement {
         file: TFile
