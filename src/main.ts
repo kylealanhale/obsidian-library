@@ -216,7 +216,7 @@ export default class LibraryPlugin extends Plugin {
 
         const spec = await this.getOrCreateFolderSpec(folder)
         spec.sort.notes.items = Object.entries(sortIndex).sort((a, b) => a[1] - b[1]).map((item) => item[0])
-        this.saveFolderSpec(folder, spec)
+        await this.saveFolderSpec(folder, spec)
     }
 }
 

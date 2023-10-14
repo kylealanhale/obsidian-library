@@ -194,7 +194,10 @@ export class LibraryView extends ItemView {
         this.isRendering = true
 
         const folder = this.renderQueue.shift()
-        if (!folder) return
+        if (!folder) {
+            this.isRendering = false
+            return
+        }
 
         let notesElement = this.notesElement
         notesElement.empty()
@@ -202,6 +205,7 @@ export class LibraryView extends ItemView {
         const children = folder.children.filter((child) => child instanceof TFile) as TFile[]
         if (!children.length) {
             notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
+            this.isRendering = false
             return
         }
 
@@ -217,7 +221,10 @@ export class LibraryView extends ItemView {
 
         for (let index = 0; index < children.length; index++) {
             const file = children[index]
-            if (file.extension != 'md') return;
+            if (file.extension != 'md') {
+                this.isRendering = false
+                return
+            };
 
             // Create the note element
             const itemDom = this.wrapper.view.createItemDom(file)
@@ -233,7 +240,7 @@ export class LibraryView extends ItemView {
 
             // If this is the folder's active note, open it
             if (spec.activeNote == file.path) {
-                await this.openFile(file, spec, container)
+                await this.openFile(file, container)
             }
 
             // If the open file is this note, highlight it
@@ -245,7 +252,7 @@ export class LibraryView extends ItemView {
 
             // Open the note when clicked
             container.onClickEvent(async _ => {
-                await this.openFile(file, spec, container);
+                await this.openFile(file, container);
             })
 
             // Set up stuff needed for drag and drop
@@ -263,12 +270,14 @@ export class LibraryView extends ItemView {
         if (this.renderQueue.length) await this.render()
     }
 
-    async openFile(file: TFile, spec: ObsidianFolderSpec, element: HTMLElement) {
+    async openFile(file: TFile, element: HTMLElement) {
         if (this.activeNoteElement) this.activeNoteElement.removeClass('is-active')
         this.activeNoteElement = element
         this.activeNoteElement.addClass('is-active')
 
         await this.plugin.app.workspace.getLeaf(false).openFile(file)
+
+        const spec = await this.plugin.getOrCreateFolderSpec(file.getParent())
         spec.activeNote = file.path
         this.plugin.saveFolderSpec(file.getParent(), spec)
     }
