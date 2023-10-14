@@ -57,6 +57,7 @@ export default class LibraryPlugin extends Plugin {
                 // Add new note to folder spec
                 let spec = await this.getOrCreateFolderSpec(parent)
                 spec.sort.notes.items.push(file.name)
+                spec.activeNote = file.path
                 this.saveFolderSpec(parent, spec)
 
                 // Update cache (it'll read from the spec that was just updated)
@@ -67,6 +68,7 @@ export default class LibraryPlugin extends Plugin {
 
             this.vaultEvents.push(this.app.vault.on('modify', async (file) => {
                 if (!(file instanceof TFile)) { return }
+
                 this.updateHandler(file, file.getParent())
             }))
 
@@ -195,6 +197,7 @@ export default class LibraryPlugin extends Plugin {
             const text = await folder.vault.adapter.read(specPath)
             spec = parseYaml(text) as ObsidianFolderSpec
             // Make sure it's well-formed
+            if (!spec) spec = emptySpec
             if (!spec.sort) spec.sort = emptySpec.sort
             if (!spec.sort.folders) spec.sort.folders = emptySpec.sort.folders
             if (!spec.sort.notes) spec.sort.notes = emptySpec.sort.notes

@@ -3,6 +3,7 @@ import { FileExplorerWrapper } from "./FileExplorerViewWrapper";
 import { markdownToTxt } from 'markdown-to-txt';
 import fm from 'front-matter';
 import LibraryPlugin from "src/main";
+import { ObsidianFolderSpec } from "src/ObsidianFolderSpec";
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 
@@ -21,6 +22,7 @@ export class LibraryView extends ItemView {
     foldersElement: HTMLElement
     notesElement: HTMLElement
     reorderMarkerElement: HTMLElement
+    activeNoteElement: HTMLElement
 
     split: WorkspaceSplit
     leaf: WorkspaceLeaf
@@ -183,12 +185,16 @@ export class LibraryView extends ItemView {
 
     async render(folder: TFolder) {
         let hasNotes = false
-        let activeNoteElement: HTMLElement
+        let noteWasFound = false
         let notesElement = this.notesElement
         notesElement.empty()
-        const spec = await this.plugin.getOrCreateFolderSpec(folder)
 
         const children = folder.children.filter((child) => child instanceof TFile) as TFile[]
+        if (!children.length) {
+            notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
+            return
+        }
+
         const cache = this.plugin.data.sortCache[folder.path]
         if (cache) {
             let sortIndex = cache.notes
@@ -196,46 +202,45 @@ export class LibraryView extends ItemView {
         }
         const previews = await Promise.all(children.map(async (child) => await this.generatePreviewText(child as TFile)))
 
+        const spec = await this.plugin.getOrCreateFolderSpec(folder)
+        if (!spec.activeNote) spec.activeNote = children[0].path
+
         for (let index = 0; index < children.length; index++) {
             const file = children[index]
             if (file.extension != 'md') return;
 
-            if (spec.activeNote == file.path) {
-                await this.plugin.app.workspace.getLeaf(false).openFile(file)
-            }
-
-            hasNotes = true
-
-            let title = file.basename
-            let preview = previews[index]
-            if (preview.startsWith(title)) preview = preview.slice(title.length)
-
-            // TODO: Figure out if this new hijacked approach will work
+            // Create the note element
             const itemDom = this.wrapper.view.createItemDom(file)
             const container = itemDom.el as LibraryDivElement
             container.addClass('library-summary-container')
+            notesElement.appendChild(container)
+
+            // Add preview to note element
+            let title = file.basename
+            let preview = previews[index]
+            if (preview.startsWith(title)) preview = preview.slice(title.length)
+            itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
+
+            // If this is the folder's active note, open it
+            if (spec.activeNote == file.path) {
+                noteWasFound = true
+                await this.openFile(file, spec, container)
+            }
+
+            // If the open file is this note, highlight it
             const currentNote = this.plugin.app.workspace.getActiveFile()
             if (currentNote && currentNote.path == file.path) {
                 container.addClass('is-active')
-                activeNoteElement = container
+                this.activeNoteElement = container
             }
 
-            this.notesElement.appendChild(container)
-            itemDom.selfEl.createDiv({text: preview, cls: 'library-summary'})
-
-            container.onClickEvent(async event => {
-                if (activeNoteElement) activeNoteElement.removeClass('is-active')
-                activeNoteElement = container
-                activeNoteElement.addClass('is-active')
-
-                this.app.workspace.getLeaf().openFile(file);
-
-                spec.activeNote = file.path
-                this.plugin.saveFolderSpec(file.getParent(), spec)
+            // Open the note when clicked
+            container.onClickEvent(async _ => {
+                await this.openFile(file, spec, container);
             })
 
+            // Set up stuff needed for drag and drop
             container.file = file
-
             this.plugin.app.dragManager.handleDrag(container, (event) => {
                 this.plugin.app.dragManager.dragFile(event, file)
                 let view = this.wrapper.view
@@ -244,10 +249,16 @@ export class LibraryView extends ItemView {
                 this.currentlyDragging = container
             })
         }
+    }
 
-        if (!hasNotes) {
-            notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
-        }
+    async openFile(file: TFile, spec: ObsidianFolderSpec, element: HTMLElement) {
+        if (this.activeNoteElement) this.activeNoteElement.removeClass('is-active')
+        this.activeNoteElement = element
+        this.activeNoteElement.addClass('is-active')
+
+        await this.plugin.app.workspace.getLeaf(false).openFile(file)
+        spec.activeNote = file.path
+        this.plugin.saveFolderSpec(file.getParent(), spec)
     }
 
     previewCache: Record<string, string> = {}
