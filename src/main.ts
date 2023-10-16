@@ -30,6 +30,7 @@ export default class LibraryPlugin extends Plugin {
     metadataEvents: EventRef[] = []
     vaultEvents: EventRef[] = []
     events: EventHandler[] = []
+    commandCallbacks: { [key: string]: () => void } = {}
     handleUpdates: UpdateHandler = async (_) => {}
 
     async onload() {
@@ -37,6 +38,24 @@ export default class LibraryPlugin extends Plugin {
         await this.loadLibraryData()
 
         this.addSettingTab(new LibrarySettingsTab(this.app, this))
+
+        this.addCommand({
+            id: 'show-previous',
+            name: 'Show previous note in folder',
+            callback: () => {
+                this.commandCallbacks['show-previous']()
+            },
+            hotkeys: []
+        });
+
+        this.addCommand({
+            id: 'show-next',
+            name: 'Show next note in folder',
+            callback: () => {
+                this.commandCallbacks['show-next']()
+            },
+            hotkeys: []
+        });
 
         this.metadataEvents.push(this.app.metadataCache.on('changed', async (file, _, metadata) => {
             let parent = file.parent as TFolder

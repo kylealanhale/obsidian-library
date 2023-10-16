@@ -3,7 +3,6 @@ import { FileExplorerWrapper } from "./FileExplorerViewWrapper";
 import { markdownToTxt } from 'markdown-to-txt';
 import fm from 'front-matter';
 import LibraryPlugin from "src/main";
-import { ObsidianFolderSpec } from "src/ObsidianFolderSpec";
 
 export const VIEW_TYPE_LIBRARY = "library-view";
 
@@ -31,6 +30,8 @@ export class LibraryView extends ItemView {
 
     wrapper: FileExplorerWrapper
 
+    children: TFile[] = []
+    childrenElements: Record<string, HTMLElement> = {}
     currentlyDragging: LibraryDivElement | null
     currentlyReceiving: Element
 
@@ -43,6 +44,8 @@ export class LibraryView extends ItemView {
             delete this.previewCache[file.path]
             await this.requestRender(folder)
         }
+        this.plugin.commandCallbacks['show-next'] = () => this.navigateBy(1)
+        this.plugin.commandCallbacks['show-previous'] = () => this.navigateBy(-1)
 
         this.icon = "library"
     }
@@ -183,6 +186,15 @@ export class LibraryView extends ItemView {
         empties.forEach(empty => empty.parentNode?.removeChild(empty))
     }
 
+    navigateBy(amount: number) {
+        const currentNote = this.plugin.app.workspace.getActiveFile()
+        if (!currentNote) return
+        const index = this.children.indexOf(currentNote)
+        if (index < 0) return
+        const newIndex = Math.clamp(index + amount, 0, this.children.length - 1)
+        this.openFile(this.children[newIndex])
+    }
+
     renderQueue: TFolder[] = []
     isRendering: boolean = false
     async requestRender(folder: TFolder) {
@@ -202,7 +214,7 @@ export class LibraryView extends ItemView {
         let notesElement = this.notesElement
         notesElement.empty()
 
-        const children = folder.children.filter((child) => child instanceof TFile) as TFile[]
+        const children = this.children = folder.children.filter((child) => child instanceof TFile) as TFile[]
         if (!children.length) {
             notesElement.createDiv({text: 'No notes', cls: 'library-empty'})
             this.isRendering = false
@@ -231,6 +243,7 @@ export class LibraryView extends ItemView {
             const container = itemDom.el as LibraryDivElement
             container.addClass('library-summary-container')
             notesElement.appendChild(container)
+            this.childrenElements[file.path] = container
 
             // Add preview to note element
             let title = file.basename
@@ -240,7 +253,7 @@ export class LibraryView extends ItemView {
 
             // If this is the folder's active note, open it
             if (spec.activeNote == file.path) {
-                await this.openFile(file, container)
+                await this.openFile(file)
             }
 
             // If the open file is this note, highlight it
@@ -252,7 +265,7 @@ export class LibraryView extends ItemView {
 
             // Open the note when clicked
             container.onClickEvent(async _ => {
-                await this.openFile(file, container);
+                await this.openFile(file);
             })
 
             // Set up stuff needed for drag and drop
@@ -270,10 +283,11 @@ export class LibraryView extends ItemView {
         if (this.renderQueue.length) await this.render()
     }
 
-    async openFile(file: TFile, element: HTMLElement) {
-        if (this.activeNoteElement) this.activeNoteElement.removeClass('is-active')
-        this.activeNoteElement = element
-        this.activeNoteElement.addClass('is-active')
+    async openFile(file: TFile) {
+        const currentNote = this.plugin.app.workspace.getActiveFile()
+        const oldActiveElement = this.childrenElements[currentNote?.path ?? '']
+        if (oldActiveElement) oldActiveElement.removeClass('is-active')
+        this.childrenElements[file.path].addClass('is-active')
 
         await this.plugin.app.workspace.getLeaf(false).openFile(file)
 

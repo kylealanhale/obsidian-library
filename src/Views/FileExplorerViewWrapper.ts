@@ -54,7 +54,7 @@ export class FileExplorerWrapper {
             }
 
             const children = (this.file.children as [TAbstractFile])
-                .filter((child) => child instanceof TFolder)  // No files allowed!
+                .filter((child) => instance.isNavigable(child))  // No files allowed!
                 .sort((first, second) => cache.folders[first.name] - cache.folders[second.name])
                 .map((child) => this.fileExplorer.fileItems[child.path])
                 .filter((child) => child)
